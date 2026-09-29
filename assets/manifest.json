@@ -1,0 +1,54 @@
+{
+  "original_executable_sha256": "e266c7202b5c5b2f7a389af11901f9ebc92befcec416ea3e82e8f410932913b5",
+  "upx_unpacked_sha256": "f4bb66e03c3a3b8247d96d1975ab95a1dee365cbec82ea451eca42ef117a62b1",
+  "resources": [
+    {
+      "resource_id": 106,
+      "asset": "ball.png",
+      "original_bytes": 2102,
+      "original_sha256": "98a10049963bed71738524979e33eb81af6fcf06195549f48e78ef738fe7e499",
+      "asset_bytes": 1244,
+      "asset_sha256": "3b1df10486c540064cf0b7ccb3599e26588c88d7eff93502f0ff3e6e28189c57"
+    },
+    {
+      "resource_id": 107,
+      "asset": "font-large.bin",
+      "original_bytes": 5760,
+      "original_sha256": "dbd8501304737fc01b586e008a07620602be76dc57d1f1e41da91b3a075f8725",
+      "asset_bytes": 5760,
+      "asset_sha256": "dbd8501304737fc01b586e008a07620602be76dc57d1f1e41da91b3a075f8725"
+    },
+    {
+      "resource_id": 108,
+      "asset": "font-map.bin",
+      "original_bytes": 512,
+      "original_sha256": "b20c15be7011a9f261662bad12f453a3026c2603a9df58099b2a4ae431442e37",
+      "asset_bytes": 512,
+      "asset_sha256": "b20c15be7011a9f261662bad12f453a3026c2603a9df58099b2a4ae431442e37"
+    },
+    {
+      "resource_id": 109,
+      "asset": "font-small.bin",
+      "original_bytes": 800,
+      "original_sha256": "a86bd82cdae1eb2394f56732d45c5b0e802034a3127b6c68d45326dd56a222fc",
+      "asset_bytes": 800,
+      "asset_sha256": "a86bd82cdae1eb2394f56732d45c5b0e802034a3127b6c68d45326dd56a222fc"
+    },
+    {
+      "resource_id": 110,
+      "asset": "logo.png",
+      "original_bytes": 15478,
+      "original_sha256": "c89f0e91a58c9ea14cae90dc2091a03ec6d43198ce1a27081423fe8e42160cd7",
+      "asset_bytes": 3020,
+      "asset_sha256": "8bed5e388350f1fdb550d803c54ed19728778e8d495a6e1d0f0beaf8f8945f61"
+    },
+    {
+      "resource_id": 111,
+      "asset": "music.ym",
+      "original_bytes": 202847,
+      "original_sha256": "e03ddc3b752fea1f556ba8eb970d41be7c41e35499b9d0da9f6793f27ea97695",
+      "asset_bytes": 202847,
+      "asset_sha256": "e03ddc3b752fea1f556ba8eb970d41be7c41e35499b9d0da9f6793f27ea97695"
+    }
+  ]
+}
