@@ -91,7 +91,7 @@ func loadArtwork() (*artwork, error) {
 		a.close()
 		return nil, err
 	}
-	a.smallFace = scrolling.Face{Atlas: a.smallAtlas, Metrics: smallMetrics, ScaleX: 28, ScaleY: 35}
+	a.smallFace = scrolling.Face{Atlas: a.smallAtlas, Metrics: smallMetrics, ScaleX: source.SmallColumnPitch, ScaleY: source.SmallRowPitch}
 	if data, readErr := assets.Files.ReadFile("original/large-message.txt"); readErr == nil {
 		a.largeText = string(data)
 	} else {

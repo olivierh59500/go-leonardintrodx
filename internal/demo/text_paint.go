@@ -3,7 +3,6 @@ package demo
 import (
 	"image"
 	"image/color"
-	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/olivierh59500/democonstructionkit/render"
@@ -45,63 +44,6 @@ func newLargePainter(white *ebiten.Image, wireframe func() bool) (scrolling.Pain
 					batch.Rect(left+rowShiftX, top+rowShiftY, right-left, bottom-top-2,
 						image.Rect(0, 0, 1, 1), color.White)
 				}
-			}
-		}
-		batch.Flush()
-	}, nil
-}
-
-func newSmallPainter(white *ebiten.Image, wireframe func() bool) (scrolling.Painter, error) {
-	font, err := readSmallFont()
-	if err != nil {
-		return nil, err
-	}
-	batch := render.NewBatch(4096)
-	return func(dst *ebiten.Image, sample scrolling.Sample, op ebiten.DrawImageOptions) {
-		if sample.Glyph.Rune > 255 {
-			return
-		}
-		character := byte(sample.Glyph.Rune)
-		outlined := wireframe()
-		batch.Begin(dst, white)
-		for y := 0; y < 8; y++ {
-			for x := 0; x < 8; x++ {
-				if !font.Pixel(character, x, y) {
-					continue
-				}
-				left, top := op.GeoM.Apply(float64(x), float64(y))
-				right, bottom := op.GeoM.Apply(float64(x+1), float64(y+1))
-				// Face shading belongs to each lit bitmap bit, like the original
-				// Direct3D cubelets. The surrounding warp adds motion and palette.
-				left += 14 * math.Sin(sample.Time*0.79+left*0.011)
-				top += 27 * math.Sin(sample.Time*0.71+left*0.009)
-				width, height := right-left-2, bottom-top-3
-				right, bottom = left+width, top+height
-				if width <= 0 || height <= 0 || math.IsNaN(width) || math.IsNaN(height) {
-					continue
-				}
-				if outlined {
-					strokeCell(batch, left, top, width, height)
-					continue
-				}
-				front := [4]ebiten.Vertex{
-					render.Vertex(left+5, top+5, 0, 0, color.RGBA{255, 255, 220, 255}),
-					render.Vertex(right-2, top+5, 1, 0, color.RGBA{255, 255, 250, 255}),
-					render.Vertex(right-2, bottom-2, 1, 1, color.RGBA{30, 115, 255, 255}),
-					render.Vertex(left+5, bottom-2, 0, 1, color.RGBA{100, 245, 255, 255}),
-				}
-				topFace := [4]ebiten.Vertex{
-					render.Vertex(left, top, 0, 0, color.RGBA{255, 205, 95, 255}),
-					render.Vertex(right-5, top, 1, 0, color.RGBA{255, 245, 195, 255}),
-					front[1], front[0],
-				}
-				side := [4]ebiten.Vertex{
-					front[1], render.Vertex(right, top, 1, 0, color.RGBA{240, 150, 200, 255}),
-					render.Vertex(right, bottom-7, 1, 1, color.RGBA{85, 115, 230, 255}), front[2],
-				}
-				batch.Quad(topFace)
-				batch.Quad(side)
-				batch.Quad(front)
 			}
 		}
 		batch.Flush()

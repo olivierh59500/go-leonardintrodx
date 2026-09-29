@@ -15,7 +15,7 @@ frames/s, while the original chip track contains 253.44 seconds before looping.
 | `00402b30` | 4 s | Sixteen pastel ribbon strips, batched through DCK. |
 | `00402d40` | 12 s | Eighty original ball images placed by four spaced source sine banks and drawn by DCK's sprite renderer. |
 | `00402660` | 18 s | The 180 × 80 Oxygene logo, projected in ten strips by DCK's image warp. |
-| `00402110` | 26 s | The original 8 × 8 font, advanced by DCK's scrolling transport and painted as separate shaded cells. |
+| `00402110` | 26 s | The original 8 × 8 font, advanced by DCK's scrolling transport and drawn as source-colored, projected 3D cubelets. |
 | `00401a40` | 36 s | The original 32 × 30 font, advanced by a second DCK scroll and painted in bounded cells with the original row oscillators. |
 
 The cube uses the executable's 60-unit vertices, six face colors, 200-unit view
@@ -28,15 +28,24 @@ The raster colors come from the 16 original vertex-color words. The original
 oscillator pairs set the ribbon endpoints and all 80 ball positions; the logo
 uses four additional source oscillators for its vertical and row motion. The
 big and small text scroll at 510 and 595 source units/s. Their bitmap character
-orders and messages are recovered from the executable. RGB-tinted font cells,
-3D perspective and clipping are native approximations of Direct3D's raster
-rules, using bounded GPU batches and persistent DCK surfaces.
+orders and messages are recovered from the executable. Large-text tinting and
+Direct3D raster-edge coverage remain native adaptations, using bounded GPU
+batches and persistent DCK surfaces.
 
 The large scroller enters at the right edge. Its 40-column source surface uses
 an 18-pixel column pitch and a 20-pixel left offset. Each of its 30 rows has
 two 32-pixel sine motions with source rates 0.08 and 0.103 per speed-clock
-unit. Both scrolling painters skip glyphs that cannot reach the visible
-surface, including their maximum cell displacement.
+unit. Its painter skips glyphs outside the source surface, allowing for cell
+displacement.
+
+The smaller scroller uses 40 columns spaced 28 world units and eight rows
+spaced 30 units. Each lit font bit becomes a 20-unit cube with the original
+white, yellow, orange, blue and cyan vertex colors. Four global oscillators
+and two row oscillators move those cubes through the same source projection
+as the main cube. DCK controls the message and transport; the cubelets draw
+directly to the 640 × 480 canvas, with conservative 3D visibility culling.
+They can move below the former 280-pixel intermediate surface without being
+cut off.
 
 The chip meter uses the original sixteen-word volume table, tone bins chosen
 by `round(10000/period)`, 8-pixel spacing and a 3-pixel decay per update.

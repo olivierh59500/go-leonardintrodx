@@ -40,7 +40,8 @@ type Game struct {
 	cube                                      *effects.MeshEffect
 	ballRenderer                              *sprites.FieldRenderer
 	ballSamples                               [80]sprites.FieldSample
-	logo, small, large                        *effects.Warp
+	logo, large                               *effects.Warp
+	small                                     *scrolling.Scrolling
 	white                                     *ebiten.Image
 	batch                                     *render.Batch
 	visual                                    *sound.Stream
@@ -107,10 +108,10 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
 		return nil, err
 	}
-	if g.small, err = newTextWarp(g.art.smallFace, g.art.smallText, g.white, false, func() bool { return g.wireframe }); err != nil {
+	if g.small, err = newSmallScrolling(g.art.smallFace, g.art.smallText, g.white, func() bool { return g.wireframe }); err != nil {
 		return nil, err
 	}
-	if g.large, err = newTextWarp(g.art.largeFace, g.art.largeText, g.white, true, func() bool { return g.wireframe }); err != nil {
+	if g.large, err = newLargeTextWarp(g.art.largeFace, g.art.largeText, g.white, func() bool { return g.wireframe }); err != nil {
 		return nil, err
 	}
 	if err = g.prepare(g.Seconds()); err != nil {
@@ -163,24 +164,15 @@ func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
 	return warp, nil
 }
 
-func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bool, wireframe func() bool) (*effects.Warp, error) {
-	width, height, columns, rows := 1120, 280, 40, 8
-	speed, entry := 595.0, 1120.0
-	var painter scrolling.Painter
-	var err error
-	if large {
-		width, height, columns, rows = 720, 480, 40, 30
-		speed, entry = 510, 720
-		painter, err = newLargePainter(white, wireframe)
-	} else {
-		painter, err = newSmallPainter(white, wireframe)
-	}
+func newLargeTextWarp(face scrolling.Face, text string, white *ebiten.Image, wireframe func() bool) (*effects.Warp, error) {
+	const width, height, columns, rows = 720, 480, 40, 30
+	painter, err := newLargePainter(white, wireframe)
 	if err != nil {
 		return nil, err
 	}
 	scroll, err := scrolling.New(scrolling.Config{
 		Text: text, Fonts: map[string]scrolling.Face{"original": face}, Font: "original",
-		Speed: speed, X: entry, Y: 0, Repeat: true, Gap: 0,
+		Speed: 510, X: 720, Y: 0, Repeat: true, Gap: 0,
 		Map: func(sample scrolling.Sample, op *ebiten.DrawImageOptions) bool {
 			if sample.Glyph.Image == nil {
 				return false
@@ -200,22 +192,16 @@ func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bo
 	if err != nil {
 		return nil, err
 	}
-	if large {
-		warp.Map = func(x, y, t float64) geometry.Vec2 {
-			return geometry.Vec2{X: x - 20, Y: y + 20}
-		}
-		warp.Tint = func(x, y, t float64) color.Color {
-			position := max(0, min(1, y/480+0.07*math.Sin(t*0.11)))
-			warm := max(0, min(1, (t-24)/24))
-			return color.RGBA{
-				R: uint8(20 + 205*position*position),
-				G: uint8(240 - 215*position),
-				B: uint8(245 - 20*position - 165*warm*position), A: 255,
-			}
-		}
-	} else {
-		warp.Map = func(x, y, t float64) geometry.Vec2 {
-			return geometry.Vec2{X: x - 160, Y: y + 60}
+	warp.Map = func(x, y, t float64) geometry.Vec2 {
+		return geometry.Vec2{X: x - 20, Y: y + 20}
+	}
+	warp.Tint = func(x, y, t float64) color.Color {
+		position := max(0, min(1, y/480+0.07*math.Sin(t*0.11)))
+		warm := max(0, min(1, (t-24)/24))
+		return color.RGBA{
+			R: uint8(20 + 205*position*position),
+			G: uint8(240 - 215*position),
+			B: uint8(245 - 20*position - 165*warm*position), A: 255,
 		}
 	}
 	return warp, nil
@@ -342,7 +328,7 @@ func (g *Game) Draw(dst *ebiten.Image) {
 		g.large.Source.Draw(dst)
 		return
 	case "raw-small":
-		g.small.Source.Draw(dst)
+		g.small.Draw(dst)
 		return
 	case "large":
 		g.large.Draw(dst)
