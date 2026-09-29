@@ -49,6 +49,7 @@ type Game struct {
 	musicData                                 []byte
 	samples                                   [960 * 8]byte
 	registers                                 [14]uint8
+	meter                                     source.Meter
 	tick                                      int
 	endTick                                   int
 	paused, wireframe, showLoad, mute, closed bool
@@ -76,17 +77,9 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if start > 0 {
-		_, err = g.visual.Seek(int64(start)*960*8, io.SeekStart)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if _, err = io.ReadFull(g.visual, g.samples[:]); err != nil {
+	if err = g.primeMeter(start); err != nil {
 		return nil, err
 	}
-	g.registers, _ = g.visual.YMRegisters()
-	g.visualPrimed = true
 	g.white = ebiten.NewImage(1, 1)
 	g.white.Fill(color.White)
 	cubeConfig := effects.DefaultSolidCubeConfig(74)
@@ -114,6 +107,23 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 		return nil, err
 	}
 	return g, nil
+}
+
+func (g *Game) primeMeter(tick int) error {
+	g.meter = source.Meter{}
+	warmup := min(max(0, tick), 50)
+	if _, err := g.visual.Seek(int64(tick-warmup)*960*8, io.SeekStart); err != nil {
+		return err
+	}
+	for i := 0; i <= warmup; i++ {
+		if _, err := io.ReadFull(g.visual, g.samples[:]); err != nil {
+			return err
+		}
+		g.registers, _ = g.visual.YMRegisters()
+		g.meter.Step(g.registers)
+	}
+	g.visualPrimed = true
+	return nil
 }
 
 var logoWaves = [4]source.Oscillator{
@@ -206,6 +216,11 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.paused = !g.paused
+		if !g.paused && g.music != nil {
+			if err := g.primeMeter(int(math.Round(g.music.Position().Seconds() * FPS))); err != nil {
+				return err
+			}
+		}
 	}
 	if !g.mute && g.music == nil {
 		var err error
@@ -231,6 +246,7 @@ func (g *Game) Update() error {
 				return err
 			}
 			g.registers, _ = g.visual.YMRegisters()
+			g.meter.Step(g.registers)
 		}
 	}
 	g.tick++

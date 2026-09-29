@@ -49,6 +49,24 @@
       "original_sha256": "e03ddc3b752fea1f556ba8eb970d41be7c41e35499b9d0da9f6793f27ea97695",
       "asset_bytes": 202847,
       "asset_sha256": "e03ddc3b752fea1f556ba8eb970d41be7c41e35499b9d0da9f6793f27ea97695"
+    },
+    {
+      "resource_id": 1,
+      "resource_kind": "ICON",
+      "asset": "icon-32.png",
+      "original_bytes": 766,
+      "original_sha256": "269102481cbffa2d6ad0ada8a9e67e5a86f3989511d770393f716da623e27643",
+      "asset_bytes": 680,
+      "asset_sha256": "cdf28ce9439a47e0f50f65e353c7645f12b8c8a2da596c9f3130fa2e2b6a0d4e"
+    },
+    {
+      "resource_id": 2,
+      "resource_kind": "ICON",
+      "asset": "icon-16.png",
+      "original_bytes": 318,
+      "original_sha256": "87293661c74a1e3ca6d490aca6ea5b51a90e1e3b85c7533ae70b593cb60215b7",
+      "asset_bytes": 294,
+      "asset_sha256": "49ebc51bb34ef56f8e9c714d9ce8ecb6df276dc15b2859dcadfef42946895d38"
     }
   ],
   "embedded_messages": [

@@ -11,8 +11,10 @@ import (
 
 func TestEmbeddedArtworkAndSoundtrack(t *testing.T) {
 	for name, want := range map[string][2]int{
-		"original/ball.png": {32, 32},
-		"original/logo.png": {180, 80},
+		"original/ball.png":    {32, 32},
+		"original/logo.png":    {180, 80},
+		"original/icon-16.png": {16, 16},
+		"original/icon-32.png": {32, 32},
 	} {
 		file, err := Files.Open(name)
 		if err != nil {

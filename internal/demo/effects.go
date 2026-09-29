@@ -149,15 +149,22 @@ func cubePosition(t float64) (float64, float64) {
 
 func (g *Game) drawMeters(dst *ebiten.Image) {
 	g.batch.Begin(dst, g.white)
-	for channel := 0; channel < 3; channel++ {
-		amplitude := int(g.registers[8+channel] & 0x0f)
-		period := int(g.registers[channel*2]) | int(g.registers[channel*2+1]&0xf)<<8
-		if amplitude == 0 || period == 0 {
+	for column := 0; column < 80; column++ {
+		height := g.meter.Level(column)
+		if height <= 0 {
 			continue
 		}
-		height := math.Min(120, float64(amplitude)*4+float64(2000/period))
-		x := 17 + float64(channel)*8
-		g.batch.Rect(x, 479-height, 5, height, image.Rect(0, 0, 1, 1), color.RGBA{255, 30 + uint8(60*channel), 20, 255})
+		x, top := float64(column*8), 479-height
+		if g.wireframe {
+			strokeCell(g.batch, x, top, 7, height)
+			continue
+		}
+		yellow := color.RGBA{255, 255, 0, 255}
+		red := color.RGBA{255, 0, 0, 255}
+		g.batch.Quad([4]ebiten.Vertex{
+			render.Vertex(x, top, 0, 0, yellow), render.Vertex(x+7, top, 1, 0, yellow),
+			render.Vertex(x+7, 479, 1, 1, red), render.Vertex(x, 479, 0, 1, red),
+		})
 	}
 	g.batch.Flush()
 }

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"flag"
+	"image"
+	"image/png"
 	"log"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	capture "github.com/olivierh59500/democonstructionkit/fidelity/ebiten"
+	"github.com/olivierh59500/go-leonardintrodx/assets"
 	"github.com/olivierh59500/go-leonardintrodx/internal/demo"
 )
 
@@ -52,6 +56,19 @@ func main() {
 	ebiten.SetTPS(demo.FPS)
 	ebiten.SetWindowSize(demo.Width*3/2, demo.Height*3/2)
 	ebiten.SetWindowTitle("OldSkool DirectX 8 Go - Leonard / Oxygene")
+	icons := make([]image.Image, 0, 2)
+	for _, name := range []string{"original/icon-16.png", "original/icon-32.png"} {
+		data, readErr := assets.Files.ReadFile(name)
+		if readErr != nil {
+			log.Fatal(readErr)
+		}
+		icon, decodeErr := png.Decode(bytes.NewReader(data))
+		if decodeErr != nil {
+			log.Fatal(decodeErr)
+		}
+		icons = append(icons, icon)
+	}
+	ebiten.SetWindowIcon(icons)
 	ebiten.SetRunnableOnUnfocused(true)
 	if err = ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
