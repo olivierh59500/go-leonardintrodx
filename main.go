@@ -48,6 +48,7 @@ func main() {
 		log.Fatal(err)
 	}
 	game.SetWireframe(*wireframe)
+	game.EnableRealtimeCube(true)
 	if err = game.SetLayer(*layer); err != nil {
 		log.Fatal(err)
 	}

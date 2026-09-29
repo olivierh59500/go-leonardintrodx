@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/olivierh59500/democonstructionkit/effects"
 	"github.com/olivierh59500/democonstructionkit/geometry"
 	"github.com/olivierh59500/democonstructionkit/render"
 	"github.com/olivierh59500/democonstructionkit/sprites"
@@ -61,16 +61,29 @@ func (g *Game) drawBands(dst *ebiten.Image, t float64) {
 	g.batch.Flush()
 }
 
-func (g *Game) drawCubeWire(dst *ebiten.Image, x, y float64) {
-	vertices, _ := g.cube.Geometry(x, y)
-	paint := color.RGBA{255, 198, 255, 255}
-	for base := 0; base+4 <= len(vertices); base += 4 {
-		for corner := 0; corner < 4; corner++ {
-			a := vertices[base+corner]
-			b := vertices[base+(corner+1)%4]
-			vector.StrokeLine(dst, a.DstX, a.DstY, b.DstX, b.DstY, 1.5, paint, false)
-		}
+func (g *Game) drawCubeWire(dst *ebiten.Image) {
+	pose := g.cube.Transform
+	rotation := geometry.RotateXYZ(pose.Rotation)
+	var points [8]geometry.Vec3
+	for i, point := range g.cube.Mesh.Points {
+		points[i] = rotation.Apply(point.Scale(pose.Scale)).Add(pose.Position)
 	}
+	g.batch.Begin(dst, g.white)
+	for _, face := range [6][4]int{
+		{0, 3, 2, 1}, {4, 5, 6, 7}, {0, 4, 7, 3},
+		{1, 2, 6, 5}, {0, 1, 5, 4}, {3, 7, 6, 2},
+	} {
+		a, b, c := points[face[0]], points[face[1]], points[face[2]]
+		if b.Sub(a).Cross(c.Sub(a)).Dot(a) >= 0 {
+			continue
+		}
+		var quad [4]geometry.Vec2
+		for corner, index := range face {
+			quad[corner], _, _ = g.cube.Camera.Project(points[index])
+		}
+		g.strokeQuad(quad, color.RGBA{255, 198, 255, 255})
+	}
+	g.batch.Flush()
 }
 
 func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
@@ -106,8 +119,7 @@ func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
 	if t >= LargeTextStart {
 		g.large.Draw(dst)
 	}
-	x, y := cubePosition(t)
-	g.drawCubeWire(dst, x, y)
+	g.drawCubeWire(dst)
 	if t >= SmallTextStart {
 		g.small.Draw(dst)
 	}
@@ -137,14 +149,16 @@ func (g *Game) strokeLine(x0, y0, x1, y1, width float64, paint color.Color) {
 	})
 }
 
-// The source combines two sine controllers per axis. Their time rates are
-// the original phase increments multiplied by the 85-unit speed clock.
-func cubePosition(t float64) (float64, float64) {
-	x := 60*math.Sin(t*85*.0323) + 60*math.Sin(t*85*.0200)
-	y := 50*math.Sin(t*85*.0321) + 50*math.Sin(t*85*.0257)
-	z := 100 + 50*math.Sin(t*85*.0357) + 50*math.Sin(t*85*.0279)
-	scale := 1.15 * 100 / max(40, z)
-	return 320 + x*scale, 260 + y*scale
+// The source rotates a 60-unit cube around X and Y and translates it through
+// the six stored oscillators. The Direct3D view moves the camera 200 units
+// back; its projection matrix maps to a 415.69-pixel focal length here.
+func cubeTransform(t float64) effects.Transform {
+	x, y, z := source.CubePosition(t)
+	angle := t * math.Pi / 2
+	return effects.Transform{
+		Position: geometry.Vec3{X: x, Y: -y, Z: source.CubeViewZ + z},
+		Rotation: geometry.Vec3{X: -angle, Y: angle * 1.1}, Scale: 1,
+	}
 }
 
 func (g *Game) drawMeters(dst *ebiten.Image) {

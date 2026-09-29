@@ -10,9 +10,11 @@ font-aware scrolling, image warps, bounded rendering and audio playback.
 GOWORK=off go run .
 ```
 
-The 640 × 480 intro runs at 50 updates/s. Effects enter at 4, 12, 18, 26 and
-36 seconds, then run together. **Escape** exits, **W** switches to wireframe,
-**P** pauses the image while music continues, and **Tab** toggles the load bar.
+The 640 × 480 intro runs at 50 logical updates/s. On desktop, the cube also
+interpolates its original motion between updates for smooth display refresh.
+Effects enter at 4, 12, 18, 26 and 36 seconds, then run together. **Escape**
+exits, **W** switches to wireframe, **P** pauses the image while music continues,
+and **Tab** toggles the load bar.
 `-start 45` opens the intro at 45 seconds; `-mute` silences playback and
 `-wireframe` starts in outline mode. To save a still frame, use
 `-start 45 -capture captures/check`.

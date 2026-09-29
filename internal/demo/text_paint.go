@@ -11,6 +11,9 @@ import (
 	"github.com/olivierh59500/go-leonardintrodx/internal/source"
 )
 
+var largeRowX = source.Oscillator{Amplitude: 32, Rate: .08, Spacing: .19}
+var largeRowY = source.Oscillator{Amplitude: 32, Rate: .103, Spacing: .212}
+
 // The original font effects place each lit bit in its own 3D/raster cell.
 // DCK controls font order, speed and repetition; this painter supplies the
 // source-specific cell geometry and keeps a two-pixel horizontal gap.
@@ -28,8 +31,8 @@ func newLargePainter(white *ebiten.Image, wireframe func() bool) (scrolling.Pain
 		outlined := wireframe()
 		batch.Begin(dst, white)
 		for y := 0; y < source.LargeGlyphHeight; y++ {
-			rowShiftX := 32 * math.Sin(sample.Time*0.68+float64(y)*0.18)
-			rowShiftY := 23 * math.Sin(sample.Time*0.73+float64(y)*0.15)
+			rowShiftX := largeRowX.At(sample.Time, y)
+			rowShiftY := largeRowY.At(sample.Time, y)
 			for x := 0; x < source.LargeGlyphWidth; x++ {
 				if !font.Pixel(character, x, y) {
 					continue

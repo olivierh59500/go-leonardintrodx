@@ -37,7 +37,7 @@ const (
 // Assets and authored control data are local; reusable rendering and music are DCK.
 type Game struct {
 	art                                       *artwork
-	cube                                      *effects.SolidCube
+	cube                                      *effects.MeshEffect
 	ballRenderer                              *sprites.FieldRenderer
 	ballSamples                               [80]sprites.FieldSample
 	logo, small, large                        *effects.Warp
@@ -53,6 +53,8 @@ type Game struct {
 	tick                                      int
 	endTick                                   int
 	paused, wireframe, showLoad, mute, closed bool
+	cubeRealtime                              bool
+	lastUpdate                                time.Time
 	layer                                     string
 }
 
@@ -82,17 +84,25 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	}
 	g.white = ebiten.NewImage(1, 1)
 	g.white.Fill(color.White)
-	cubeConfig := effects.DefaultSolidCubeConfig(74)
-	cubeConfig.Perspective = 310
-	cubeConfig.EdgeWidth = 0
-	cubeConfig.CullBackFaces = true
-	cubeConfig.FaceColors = [6]color.RGBA{
-		{250, 170, 253, 255}, {255, 224, 255, 255}, {255, 194, 255, 255},
-		{246, 156, 245, 255}, {245, 205, 254, 255}, {255, 187, 249, 255},
+	cubeMesh := effects.Cube(source.CubeSide, geometry.Vec2{X: 1, Y: 1}, color.NRGBA{R: 255, G: 200, B: 255, A: 255})
+	nativeCubeColors := [6]color.NRGBA{
+		{R: 255, G: 240, B: 255, A: 255}, {R: 255, G: 224, B: 255, A: 255},
+		{R: 255, G: 208, B: 255, A: 255}, {R: 255, G: 192, B: 255, A: 255},
+		{R: 255, G: 176, B: 255, A: 255}, {R: 255, G: 160, B: 255, A: 255},
 	}
-	if g.cube, err = effects.NewSolidCube(cubeConfig); err != nil {
+	// Map the executable's +Z,+X,+Y,-X,-Z,-Y face order to DCK's
+	// -Z,+Z,-X,+X,-Y,+Y order after reflecting screen Y.
+	for face, sourceFace := range [...]int{4, 0, 3, 1, 2, 5} {
+		paint := nativeCubeColors[sourceFace]
+		cubeMesh.Triangles[face*2].Color = paint
+		cubeMesh.Triangles[face*2+1].Color = paint
+	}
+	if g.cube, err = effects.NewMesh(cubeMesh, nil, geometry.Camera{
+		Center: geometry.Vec2{X: Width / 2, Y: Height / 2}, Focal: Height * math.Sqrt(3) / 2, Near: .1,
+	}); err != nil {
 		return nil, err
 	}
+	g.cube.CullBackFaces = true
 	g.ballRenderer = sprites.NewFieldRenderer(80)
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
 		return nil, err
@@ -171,6 +181,16 @@ func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bo
 	scroll, err := scrolling.New(scrolling.Config{
 		Text: text, Fonts: map[string]scrolling.Face{"original": face}, Font: "original",
 		Speed: speed, X: entry, Y: 0, Repeat: true, Gap: 0,
+		Map: func(sample scrolling.Sample, op *ebiten.DrawImageOptions) bool {
+			if sample.Glyph.Image == nil {
+				return false
+			}
+			x0, y0 := op.GeoM.Apply(0, 0)
+			x1, y1 := op.GeoM.Apply(float64(sample.Glyph.Image.Bounds().Dx()), float64(sample.Glyph.Image.Bounds().Dy()))
+			// The per-cell motion can extend beyond the glyph's ordinary bounds.
+			const margin = 64.0
+			return x1 > -margin && x0 < float64(width)+margin && y1 > -margin && y0 < float64(height)+margin
+		},
 		Shape: "authored", Modes: map[string]scrolling.Mode{"authored": {Paint: painter}},
 	})
 	if err != nil {
@@ -182,7 +202,7 @@ func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bo
 	}
 	if large {
 		warp.Map = func(x, y, t float64) geometry.Vec2 {
-			return geometry.Vec2{X: x - 230, Y: y + 20}
+			return geometry.Vec2{X: x - 20, Y: y + 20}
 		}
 		warp.Tint = func(x, y, t float64) color.Color {
 			position := max(0, min(1, y/480+0.07*math.Sin(t*0.11)))
@@ -250,11 +270,18 @@ func (g *Game) Update() error {
 		}
 	}
 	g.tick++
-	return g.prepare(g.Seconds())
+	if err := g.prepare(g.Seconds()); err != nil {
+		return err
+	}
+	g.lastUpdate = time.Now()
+	return nil
 }
 
 func (g *Game) prepare(t float64) error {
-	g.cube.Rotation = geometry.Vec3{X: 0.65 + t*1.57, Y: 0.4 + t*1.72, Z: 0.38 + t*0.56}
+	g.cube.Transform = cubeTransform(t)
+	if err := g.cube.Update(kit.Frame{Time: t}); err != nil {
+		return err
+	}
 	if t >= BallFieldStart {
 		g.updateBallSamples(t - BallFieldStart)
 	}
@@ -288,9 +315,22 @@ func (g *Game) SetTickLimit(count int) {
 
 // SetWireframe selects outlined geometry for the composed scene.
 func (g *Game) SetWireframe(enabled bool) { g.wireframe = enabled }
+
+// EnableRealtimeCube interpolates the native cube pose between logical updates.
+// Offline captures leave this disabled so their frames stay deterministic.
+func (g *Game) EnableRealtimeCube(enabled bool) {
+	g.cubeRealtime = enabled
+	g.lastUpdate = time.Now()
+}
+
 func (g *Game) Draw(dst *ebiten.Image) {
 	dst.Fill(color.Black)
 	t := g.Seconds()
+	if g.cubeRealtime && !g.paused {
+		cubeTime := t + min(time.Since(g.lastUpdate).Seconds(), 1.0/FPS)
+		g.cube.Transform = cubeTransform(cubeTime)
+		_ = g.cube.Update(kit.Frame{Time: cubeTime})
+	}
 	switch g.layer {
 	case "atlas-large":
 		dst.DrawImage(g.art.largeAtlas, nil)
@@ -332,11 +372,10 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	if t >= LargeTextStart {
 		g.large.Draw(dst)
 	}
-	centerX, centerY := cubePosition(t)
 	if g.wireframe {
-		g.drawCubeWire(dst, centerX, centerY)
+		g.drawCubeWire(dst)
 	} else {
-		g.cube.DrawAt(dst, centerX, centerY)
+		g.cube.Draw(dst)
 	}
 	if t >= SmallTextStart {
 		g.small.Draw(dst)
