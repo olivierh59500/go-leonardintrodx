@@ -14,7 +14,7 @@ import (
 // The original font effects place each lit bit in its own 3D/raster cell.
 // DCK controls font order, speed and repetition; this painter supplies the
 // source-specific cell geometry and keeps a two-pixel horizontal gap.
-func newLargePainter(white *ebiten.Image) (scrolling.Painter, error) {
+func newLargePainter(white *ebiten.Image, wireframe func() bool) (scrolling.Painter, error) {
 	font, err := readLargeFont()
 	if err != nil {
 		return nil, err
@@ -25,6 +25,7 @@ func newLargePainter(white *ebiten.Image) (scrolling.Painter, error) {
 			return
 		}
 		character := byte(sample.Glyph.Rune)
+		outlined := wireframe()
 		batch.Begin(dst, white)
 		for y := 0; y < source.LargeGlyphHeight; y++ {
 			rowShiftX := 32 * math.Sin(sample.Time*0.68+float64(y)*0.18)
@@ -35,15 +36,19 @@ func newLargePainter(white *ebiten.Image) (scrolling.Painter, error) {
 				}
 				left, top := op.GeoM.Apply(float64(x), float64(y))
 				right, bottom := op.GeoM.Apply(float64(x)+16.0/18.0, float64(y+1))
-				batch.Rect(left+rowShiftX, top+rowShiftY, right-left, bottom-top-2,
-					image.Rect(0, 0, 1, 1), color.White)
+				if outlined {
+					strokeCell(batch, left+rowShiftX, top+rowShiftY, right-left, bottom-top-2)
+				} else {
+					batch.Rect(left+rowShiftX, top+rowShiftY, right-left, bottom-top-2,
+						image.Rect(0, 0, 1, 1), color.White)
+				}
 			}
 		}
 		batch.Flush()
 	}, nil
 }
 
-func newSmallPainter(white *ebiten.Image) (scrolling.Painter, error) {
+func newSmallPainter(white *ebiten.Image, wireframe func() bool) (scrolling.Painter, error) {
 	font, err := readSmallFont()
 	if err != nil {
 		return nil, err
@@ -54,6 +59,7 @@ func newSmallPainter(white *ebiten.Image) (scrolling.Painter, error) {
 			return
 		}
 		character := byte(sample.Glyph.Rune)
+		outlined := wireframe()
 		batch.Begin(dst, white)
 		for y := 0; y < 8; y++ {
 			for x := 0; x < 8; x++ {
@@ -69,6 +75,10 @@ func newSmallPainter(white *ebiten.Image) (scrolling.Painter, error) {
 				width, height := right-left-2, bottom-top-3
 				right, bottom = left+width, top+height
 				if width <= 0 || height <= 0 || math.IsNaN(width) || math.IsNaN(height) {
+					continue
+				}
+				if outlined {
+					strokeCell(batch, left, top, width, height)
 					continue
 				}
 				front := [4]ebiten.Vertex{
@@ -93,4 +103,15 @@ func newSmallPainter(white *ebiten.Image) (scrolling.Painter, error) {
 		}
 		batch.Flush()
 	}, nil
+}
+
+func strokeCell(batch *render.Batch, x, y, width, height float64) {
+	if width <= 2 || height <= 2 {
+		return
+	}
+	source := image.Rect(0, 0, 1, 1)
+	batch.Rect(x, y, width, 1, source, color.White)
+	batch.Rect(x, y+height-1, width, 1, source, color.White)
+	batch.Rect(x, y+1, 1, height-2, source, color.White)
+	batch.Rect(x+width-1, y+1, 1, height-2, source, color.White)
 }

@@ -16,6 +16,7 @@ func main() {
 	directory := flag.String("capture", "", "write one native frame to a directory")
 	limit := flag.Int("ticks", 0, "optional number of 50 Hz updates before exit")
 	layer := flag.String("layer", "", "optional isolated layer for capture")
+	wireframe := flag.Bool("wireframe", false, "start in outlined geometry mode")
 	flag.Parse()
 	if *start < 0 || *limit < 0 || math.IsNaN(*start) || math.IsInf(*start, 0) {
 		log.Fatal("invalid start time")
@@ -27,6 +28,7 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
+			game.SetWireframe(*wireframe)
 			if err = game.SetLayer(*layer); err != nil {
 				game.Close()
 				return nil, err
@@ -41,6 +43,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	game.SetWireframe(*wireframe)
 	if err = game.SetLayer(*layer); err != nil {
 		log.Fatal(err)
 	}

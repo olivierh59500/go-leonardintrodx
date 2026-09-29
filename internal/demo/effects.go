@@ -7,6 +7,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/olivierh59500/democonstructionkit/geometry"
 	"github.com/olivierh59500/democonstructionkit/render"
 	"github.com/olivierh59500/democonstructionkit/sprites"
 	"github.com/olivierh59500/go-leonardintrodx/internal/source"
@@ -63,14 +64,77 @@ func (g *Game) drawBands(dst *ebiten.Image, t float64) {
 func (g *Game) drawCubeWire(dst *ebiten.Image, x, y float64) {
 	vertices, _ := g.cube.Geometry(x, y)
 	paint := color.RGBA{255, 198, 255, 255}
-	for face := 0; face < 6; face++ {
-		base := face * 20
+	for base := 0; base+4 <= len(vertices); base += 4 {
 		for corner := 0; corner < 4; corner++ {
 			a := vertices[base+corner]
 			b := vertices[base+(corner+1)%4]
 			vector.StrokeLine(dst, a.DstX, a.DstY, b.DstX, b.DstY, 1.5, paint, false)
 		}
 	}
+}
+
+func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
+	g.batch.Begin(dst, g.white)
+	if t >= BallsStart {
+		phase := t - BallsStart
+		for i, paint := range ribbonColors {
+			left := max(0, min(463, math.Round(232+ribbonWaves[0].At(phase, i)+ribbonWaves[1].At(phase, i))))
+			right := max(0, min(463, math.Round(232+ribbonWaves[2].At(phase, i)+ribbonWaves[3].At(phase, i))))
+			g.strokeQuad([4]geometry.Vec2{
+				{X: 0, Y: left}, {X: 640, Y: right},
+				{X: 640, Y: right + 8}, {X: 0, Y: left + 8},
+			}, paint)
+		}
+	}
+	if t >= BallFieldStart {
+		for _, sprite := range g.ballSamples {
+			strokeCell(g.batch, sprite.X-16, sprite.Y-16, 32, 32)
+		}
+	}
+	if t >= LogoStart {
+		local := t - LogoStart
+		paint := color.RGBA{235, 135, 245, 255}
+		for row := 0; row < 10; row++ {
+			top, bottom := float64(row)*10.3, float64(row+1)*10.3
+			g.strokeQuad([4]geometry.Vec2{
+				g.logo.Map(0, top, local), g.logo.Map(233, top, local),
+				g.logo.Map(233, bottom, local), g.logo.Map(0, bottom, local),
+			}, paint)
+		}
+	}
+	g.batch.Flush()
+	if t >= LargeTextStart {
+		g.large.Draw(dst)
+	}
+	x, y := cubePosition(t)
+	g.drawCubeWire(dst, x, y)
+	if t >= SmallTextStart {
+		g.small.Draw(dst)
+	}
+	g.drawMeters(dst)
+	if g.showLoad {
+		g.drawLoad(dst)
+	}
+}
+
+func (g *Game) strokeQuad(quad [4]geometry.Vec2, paint color.Color) {
+	for edge := 0; edge < 4; edge++ {
+		a, b := quad[edge], quad[(edge+1)%4]
+		g.strokeLine(a.X, a.Y, b.X, b.Y, 1.2, paint)
+	}
+}
+
+func (g *Game) strokeLine(x0, y0, x1, y1, width float64, paint color.Color) {
+	dx, dy := x1-x0, y1-y0
+	length := math.Hypot(dx, dy)
+	if length == 0 {
+		return
+	}
+	nx, ny := -dy/length*width/2, dx/length*width/2
+	g.batch.Quad([4]ebiten.Vertex{
+		render.Vertex(x0+nx, y0+ny, 0, 0, paint), render.Vertex(x1+nx, y1+ny, 1, 0, paint),
+		render.Vertex(x1-nx, y1-ny, 1, 1, paint), render.Vertex(x0-nx, y0-ny, 0, 1, paint),
+	})
 }
 
 // The source combines two sine controllers per axis. Their time rates are

@@ -104,10 +104,10 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
 		return nil, err
 	}
-	if g.small, err = newTextWarp(g.art.smallFace, g.art.smallText, g.white, false); err != nil {
+	if g.small, err = newTextWarp(g.art.smallFace, g.art.smallText, g.white, false, func() bool { return g.wireframe }); err != nil {
 		return nil, err
 	}
-	if g.large, err = newTextWarp(g.art.largeFace, g.art.largeText, g.white, true); err != nil {
+	if g.large, err = newTextWarp(g.art.largeFace, g.art.largeText, g.white, true, func() bool { return g.wireframe }); err != nil {
 		return nil, err
 	}
 	if err = g.prepare(g.Seconds()); err != nil {
@@ -143,7 +143,7 @@ func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
 	return warp, nil
 }
 
-func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bool) (*effects.Warp, error) {
+func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bool, wireframe func() bool) (*effects.Warp, error) {
 	width, height, columns, rows := 1120, 280, 40, 8
 	speed, entry := 595.0, 1120.0
 	var painter scrolling.Painter
@@ -151,9 +151,9 @@ func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bo
 	if large {
 		width, height, columns, rows = 720, 480, 40, 30
 		speed, entry = 510, 720
-		painter, err = newLargePainter(white)
+		painter, err = newLargePainter(white, wireframe)
 	} else {
-		painter, err = newSmallPainter(white)
+		painter, err = newSmallPainter(white, wireframe)
 	}
 	if err != nil {
 		return nil, err
@@ -269,6 +269,9 @@ func (g *Game) SetTickLimit(count int) {
 		g.endTick = g.tick + count
 	}
 }
+
+// SetWireframe selects outlined geometry for the composed scene.
+func (g *Game) SetWireframe(enabled bool) { g.wireframe = enabled }
 func (g *Game) Draw(dst *ebiten.Image) {
 	dst.Fill(color.Black)
 	t := g.Seconds()
@@ -293,6 +296,10 @@ func (g *Game) Draw(dst *ebiten.Image) {
 		return
 	case "logo":
 		g.logo.Draw(dst)
+		return
+	}
+	if g.wireframe {
+		g.drawWireframe(dst, t)
 		return
 	}
 	if t >= BallsStart {
