@@ -50,5 +50,19 @@
       "asset_bytes": 202847,
       "asset_sha256": "e03ddc3b752fea1f556ba8eb970d41be7c41e35499b9d0da9f6793f27ea97695"
     }
+  ],
+  "embedded_messages": [
+    {
+      "asset": "large-message.txt",
+      "unpacked_image_va": "0x4070d8",
+      "bytes": 211,
+      "sha256": "2fa0b7be131c77d9a08f7921a977def1d71431c52f4f0506de083af59c5b6322"
+    },
+    {
+      "asset": "small-message.txt",
+      "unpacked_image_va": "0x4071b8",
+      "bytes": 687,
+      "sha256": "8c4ad8d5746399f6ed7f8e47ddb48b390f80a015d8ef809a67af4085a0f06685"
+    }
   ]
 }

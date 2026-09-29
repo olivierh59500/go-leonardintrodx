@@ -1,0 +1,54 @@
+package main
+
+import (
+	"flag"
+	"log"
+	"math"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	capture "github.com/olivierh59500/democonstructionkit/fidelity/ebiten"
+	"github.com/olivierh59500/go-leonardintrodx/internal/demo"
+)
+
+func main() {
+	start := flag.Float64("start", 0, "production position in seconds")
+	mute := flag.Bool("mute", false, "disable device audio")
+	directory := flag.String("capture", "", "write one native frame to a directory")
+	layer := flag.String("layer", "", "optional isolated layer for capture")
+	flag.Parse()
+	if *start < 0 || math.IsNaN(*start) || math.IsInf(*start, 0) {
+		log.Fatal("invalid start time")
+	}
+	first := int(math.Round(*start * demo.FPS))
+	if *directory != "" {
+		if err := capture.Run(capture.Config{Directory: *directory, Frames: []int{0}, Width: demo.Width, Height: demo.Height}, func() (ebiten.Game, error) {
+			game, err := demo.NewGame(first, true)
+			if err != nil {
+				return nil, err
+			}
+			if err = game.SetLayer(*layer); err != nil {
+				game.Close()
+				return nil, err
+			}
+			return game, nil
+		}); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	game, err := demo.NewGame(first, *mute)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = game.SetLayer(*layer); err != nil {
+		log.Fatal(err)
+	}
+	defer game.Close()
+	ebiten.SetTPS(demo.FPS)
+	ebiten.SetWindowSize(demo.Width*3/2, demo.Height*3/2)
+	ebiten.SetWindowTitle("OldSkool DirectX 8 Go - Leonard / Oxygene")
+	ebiten.SetRunnableOnUnfocused(true)
+	if err = ebiten.RunGame(game); err != nil {
+		log.Fatal(err)
+	}
+}
