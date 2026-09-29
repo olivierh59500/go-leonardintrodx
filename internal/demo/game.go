@@ -215,17 +215,14 @@ func (g *Game) Update() error {
 		return ebiten.Termination
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyW) {
-		g.wireframe = !g.wireframe
+		g.ToggleWireframe()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.showLoad = !g.showLoad
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
-		g.paused = !g.paused
-		if !g.paused && g.music != nil {
-			if err := g.primeMeter(int(math.Round(g.music.Position().Seconds() * FPS))); err != nil {
-				return err
-			}
+		if err := g.TogglePause(); err != nil {
+			return err
 		}
 	}
 	if !g.mute && g.music == nil {
@@ -301,6 +298,24 @@ func (g *Game) SetTickLimit(count int) {
 
 // SetWireframe selects outlined geometry for the composed scene.
 func (g *Game) SetWireframe(enabled bool) { g.wireframe = enabled }
+
+// ToggleWireframe switches between filled and outlined geometry.
+func (g *Game) ToggleWireframe() { g.wireframe = !g.wireframe }
+
+// Wireframe reports the current geometry mode for external controls.
+func (g *Game) Wireframe() bool { return g.wireframe }
+
+// TogglePause freezes or resumes the picture while the YM music continues.
+func (g *Game) TogglePause() error {
+	g.paused = !g.paused
+	if !g.paused && g.music != nil {
+		return g.primeMeter(int(math.Round(g.music.Position().Seconds() * FPS)))
+	}
+	return nil
+}
+
+// Paused reports whether visual updates are frozen.
+func (g *Game) Paused() bool { return g.paused }
 
 // EnableRealtimeCube interpolates the native cube pose between logical updates.
 // Offline captures leave this disabled so their frames stay deterministic.

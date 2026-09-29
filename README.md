@@ -31,3 +31,15 @@ covers the visual, audio and video checks.
 frames/s with the original YM music and a native poster frame. `-duration`
 chooses a different finite span of the looping intro. The capture contains
 only the Ebitengine canvas and DCK audio.
+
+## Android
+
+`./scripts/run-android.sh` builds the ARM64 APK, installs it on the single
+connected Android device and launches **OldSkool DirectX 8 Go**. Add
+`--build-only` to produce the APK without installing it. The debug APK is at
+`android/app/build/outputs/apk/debug/app-debug.apk`.
+
+The original 640 × 480 canvas stays centered on a landscape display. Wide
+sidebars contain **WIRE**, **PAUSE** and **RESET** touch buttons. Pause freezes
+the picture while the YM music continues; Reset restarts both. The app keeps
+the screen awake while it is in the foreground.

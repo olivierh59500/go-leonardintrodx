@@ -26,6 +26,12 @@ The presentation MP4 runs for 180 seconds with 9,000 frames at 640 × 480 and
 the audio has a -18.1 dB mean and -1.5 dB maximum. The poster is a native
 canvas capture at second 50.
 
+The Android build targets ARM64 with a minimum API level of 23 and target API
+level 36. Its APK passes signature verification and 16 KiB ZIP alignment.
+Installation and activity launch succeeded on a USB-connected Pixel 10a. The
+mobile layout test checks that the 640 × 480 picture remains separate from
+the touch controls at the Pixel's landscape aspect ratio.
+
 Original assets, control text, YM data, cube geometry, camera constants and
 principal sine trajectories come from the executable. The small font's cubelet
 geometry and vertex colors also come from the executable. Large-text tinting
