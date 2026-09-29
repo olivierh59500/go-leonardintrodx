@@ -57,3 +57,23 @@ func TestEmbeddedArtworkAndSoundtrack(t *testing.T) {
 		t.Fatal("the decoded soundtrack is silent")
 	}
 }
+
+func TestOriginalYMLoopContinuesPastSongDuration(t *testing.T) {
+	data, err := Files.ReadFile("original/music.ym")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream, err := sound.Open("original/music.ym", data, sound.Options{SampleRate: 8000, Loop: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+	const duration = 256
+	if count, err := io.CopyN(io.Discard, stream, duration*8000*8); err != nil {
+		t.Fatalf("loop stopped after %d stereo bytes: %v", count, err)
+	}
+	var frame [8]byte
+	if _, err := io.ReadFull(stream, frame[:]); err != nil {
+		t.Fatalf("loop did not continue after %d seconds: %v", duration, err)
+	}
+}

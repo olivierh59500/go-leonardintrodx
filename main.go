@@ -14,9 +14,10 @@ func main() {
 	start := flag.Float64("start", 0, "production position in seconds")
 	mute := flag.Bool("mute", false, "disable device audio")
 	directory := flag.String("capture", "", "write one native frame to a directory")
+	limit := flag.Int("ticks", 0, "optional number of 50 Hz updates before exit")
 	layer := flag.String("layer", "", "optional isolated layer for capture")
 	flag.Parse()
-	if *start < 0 || math.IsNaN(*start) || math.IsInf(*start, 0) {
+	if *start < 0 || *limit < 0 || math.IsNaN(*start) || math.IsInf(*start, 0) {
 		log.Fatal("invalid start time")
 	}
 	first := int(math.Round(*start * demo.FPS))
@@ -43,6 +44,7 @@ func main() {
 	if err = game.SetLayer(*layer); err != nil {
 		log.Fatal(err)
 	}
+	game.SetTickLimit(*limit)
 	defer game.Close()
 	ebiten.SetTPS(demo.FPS)
 	ebiten.SetWindowSize(demo.Width*3/2, demo.Height*3/2)

@@ -19,6 +19,7 @@ import (
 	playback "github.com/olivierh59500/democonstructionkit/sound/ebiten"
 	"github.com/olivierh59500/democonstructionkit/sprites"
 	"github.com/olivierh59500/go-leonardintrodx/assets"
+	"github.com/olivierh59500/go-leonardintrodx/internal/source"
 )
 
 const (
@@ -37,16 +38,19 @@ const (
 type Game struct {
 	art                                       *artwork
 	cube                                      *effects.SolidCube
-	ballRing, ballCloud                       *sprites.ProjectedField
+	ballRenderer                              *sprites.FieldRenderer
+	ballSamples                               [80]sprites.FieldSample
 	logo, small, large                        *effects.Warp
 	white                                     *ebiten.Image
 	batch                                     *render.Batch
 	visual                                    *sound.Stream
+	visualPrimed                              bool
 	music                                     *playback.Player
 	musicData                                 []byte
 	samples                                   [960 * 8]byte
 	registers                                 [14]uint8
 	tick                                      int
+	endTick                                   int
 	paused, wireframe, showLoad, mute, closed bool
 	layer                                     string
 }
@@ -78,6 +82,11 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 			return nil, err
 		}
 	}
+	if _, err = io.ReadFull(g.visual, g.samples[:]); err != nil {
+		return nil, err
+	}
+	g.registers, _ = g.visual.YMRegisters()
+	g.visualPrimed = true
 	g.white = ebiten.NewImage(1, 1)
 	g.white.Fill(color.White)
 	cubeConfig := effects.DefaultSolidCubeConfig(74)
@@ -91,12 +100,7 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	if g.cube, err = effects.NewSolidCube(cubeConfig); err != nil {
 		return nil, err
 	}
-	if g.ballRing, err = newBallField(g.art.ball, 16, false); err != nil {
-		return nil, err
-	}
-	if g.ballCloud, err = newBallField(g.art.ball, 80, true); err != nil {
-		return nil, err
-	}
+	g.ballRenderer = sprites.NewFieldRenderer(80)
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
 		return nil, err
 	}
@@ -112,6 +116,13 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	return g, nil
 }
 
+var logoWaves = [4]source.Oscillator{
+	{Amplitude: 101.75, Rate: .0342, Spacing: .2736},
+	{Amplitude: 101.75, Rate: .0143, Spacing: .1144},
+	{Amplitude: 94.25, Rate: .0342},
+	{Amplitude: 94.25, Rate: .0443},
+}
+
 func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
 	layer := kit.Func{OnDraw: func(dst *ebiten.Image) {
 		op := &ebiten.DrawImageOptions{}
@@ -123,10 +134,10 @@ func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
 		return nil, err
 	}
 	warp.Map = func(x, y, t float64) geometry.Vec2 {
-		phase := t * 1.37
+		strip := int(math.Round(y * 10 / 103))
 		return geometry.Vec2{
-			X: 203.5 + x + 34*math.Sin(y*0.072+phase) + 19*math.Sin(t*0.31),
-			Y: 179 + y + 19*math.Sin(t*0.55) + 7*math.Sin(x*0.016+t*0.48),
+			X: 203.5 + x + logoWaves[0].At(t, strip) + logoWaves[1].At(t, strip),
+			Y: 188.5 + y + logoWaves[2].At(t, 0) + logoWaves[3].At(t, 0),
 		}
 	}
 	return warp, nil
@@ -161,28 +172,29 @@ func newTextWarp(face scrolling.Face, text string, white *ebiten.Image, large bo
 	}
 	if large {
 		warp.Map = func(x, y, t float64) geometry.Vec2 {
-			return geometry.Vec2{X: x - 80, Y: y + 20}
+			return geometry.Vec2{X: x - 230, Y: y + 20}
 		}
 		warp.Tint = func(x, y, t float64) color.Color {
-			return spectralColor(x*0.011 + y*0.016 + t*1.18)
+			position := max(0, min(1, y/480+0.07*math.Sin(t*0.11)))
+			warm := max(0, min(1, (t-24)/24))
+			return color.RGBA{
+				R: uint8(20 + 205*position*position),
+				G: uint8(240 - 215*position),
+				B: uint8(245 - 20*position - 165*warm*position), A: 255,
+			}
 		}
 	} else {
 		warp.Map = func(x, y, t float64) geometry.Vec2 {
 			return geometry.Vec2{X: x - 160, Y: y + 60}
 		}
-		warp.Tint = func(x, y, t float64) color.Color {
-			return spectralColor(x*0.015 - y*0.022 + t*1.34)
-		}
 	}
 	return warp, nil
 }
 
-func spectralColor(phase float64) color.RGBA {
-	channel := func(offset float64) uint8 { return uint8(128 + 127*math.Sin(phase+offset)) }
-	return color.RGBA{channel(0), channel(2.0944), channel(4.1888), 255}
-}
-
 func (g *Game) Update() error {
+	if g.endTick > 0 && g.tick >= g.endTick {
+		return ebiten.Termination
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return ebiten.Termination
 	}
@@ -194,13 +206,6 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.paused = !g.paused
-		if g.music != nil {
-			if g.paused {
-				g.music.Pause()
-			} else {
-				g.music.Play()
-			}
-		}
 	}
 	if !g.mute && g.music == nil {
 		var err error
@@ -219,10 +224,14 @@ func (g *Game) Update() error {
 		return nil
 	}
 	if g.visual != nil {
-		if _, err := io.ReadFull(g.visual, g.samples[:]); err != nil {
-			return err
+		if g.visualPrimed {
+			g.visualPrimed = false
+		} else {
+			if _, err := io.ReadFull(g.visual, g.samples[:]); err != nil {
+				return err
+			}
+			g.registers, _ = g.visual.YMRegisters()
 		}
-		g.registers, _ = g.visual.YMRegisters()
 	}
 	g.tick++
 	return g.prepare(g.Seconds())
@@ -230,15 +239,8 @@ func (g *Game) Update() error {
 
 func (g *Game) prepare(t float64) error {
 	g.cube.Rotation = geometry.Vec3{X: 0.65 + t*1.57, Y: 0.4 + t*1.72, Z: 0.38 + t*0.56}
-	if t >= BallsStart {
-		if err := g.updateBalls(g.ballRing, t-BallsStart, false); err != nil {
-			return err
-		}
-	}
 	if t >= BallFieldStart {
-		if err := g.updateBalls(g.ballCloud, t-BallFieldStart, true); err != nil {
-			return err
-		}
+		g.updateBallSamples(t - BallFieldStart)
 	}
 	if t >= LogoStart {
 		if err := g.logo.Update(kit.Frame{Time: t - LogoStart}); err != nil {
@@ -260,6 +262,13 @@ func (g *Game) prepare(t float64) error {
 
 func (g *Game) Seconds() float64         { return float64(g.tick) / FPS }
 func (*Game) Layout(int, int) (int, int) { return Width, Height }
+
+// SetTickLimit optionally ends a short interactive device check.
+func (g *Game) SetTickLimit(count int) {
+	if count > 0 {
+		g.endTick = g.tick + count
+	}
+}
 func (g *Game) Draw(dst *ebiten.Image) {
 	dst.Fill(color.Black)
 	t := g.Seconds()
@@ -289,11 +298,10 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	if t >= BallsStart {
 		g.drawBands(dst, t)
 	}
-	if t >= 10 {
-		g.ballRing.Draw(dst)
-	}
 	if t >= BallFieldStart {
-		g.ballCloud.Draw(dst)
+		g.ballRenderer.Draw(dst, g.ballSamples[:], sprites.FieldStyle{
+			Image: g.art.ball, Appearance: sprites.FieldAppearance{Width: 32, Height: 32, AnchorX: .5, AnchorY: .5},
+		})
 	}
 	if t >= LogoStart {
 		g.logo.Draw(dst)
@@ -301,8 +309,7 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	if t >= LargeTextStart {
 		g.large.Draw(dst)
 	}
-	centerX := 320 + 215*math.Sin(t*0.29)
-	centerY := 250 + 125*math.Sin(t*0.21+0.2)
+	centerX, centerY := cubePosition(t)
 	if g.wireframe {
 		g.drawCubeWire(dst, centerX, centerY)
 	} else {
@@ -334,13 +341,16 @@ func (g *Game) Close() error {
 	}
 	g.closed = true
 	var err error
-	for _, e := range []kit.Effect{g.logo, g.small, g.large, g.ballRing, g.ballCloud} {
+	for _, e := range []kit.Effect{g.logo, g.small, g.large} {
 		if e != nil {
 			err = errors.Join(err, kit.Close(e))
 		}
 	}
 	if g.cube != nil {
 		err = errors.Join(err, g.cube.Close())
+	}
+	if g.ballRenderer != nil {
+		err = errors.Join(err, g.ballRenderer.Close())
 	}
 	if g.music != nil {
 		err = errors.Join(err, g.music.Close())

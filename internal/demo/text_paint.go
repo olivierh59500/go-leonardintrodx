@@ -72,19 +72,19 @@ func newSmallPainter(white *ebiten.Image) (scrolling.Painter, error) {
 					continue
 				}
 				front := [4]ebiten.Vertex{
-					render.Vertex(left+5, top+5, 0, 0, color.RGBA{255, 255, 255, 255}),
-					render.Vertex(right-2, top+5, 1, 0, color.RGBA{255, 250, 235, 255}),
-					render.Vertex(right-2, bottom-2, 1, 1, color.RGBA{225, 240, 255, 255}),
-					render.Vertex(left+5, bottom-2, 0, 1, color.RGBA{255, 230, 245, 255}),
+					render.Vertex(left+5, top+5, 0, 0, color.RGBA{255, 255, 220, 255}),
+					render.Vertex(right-2, top+5, 1, 0, color.RGBA{255, 255, 250, 255}),
+					render.Vertex(right-2, bottom-2, 1, 1, color.RGBA{30, 115, 255, 255}),
+					render.Vertex(left+5, bottom-2, 0, 1, color.RGBA{100, 245, 255, 255}),
 				}
 				topFace := [4]ebiten.Vertex{
-					render.Vertex(left, top, 0, 0, color.RGBA{255, 238, 180, 255}),
-					render.Vertex(right-5, top, 1, 0, color.RGBA{255, 238, 180, 255}),
+					render.Vertex(left, top, 0, 0, color.RGBA{255, 205, 95, 255}),
+					render.Vertex(right-5, top, 1, 0, color.RGBA{255, 245, 195, 255}),
 					front[1], front[0],
 				}
 				side := [4]ebiten.Vertex{
-					front[1], render.Vertex(right, top, 1, 0, color.RGBA{160, 210, 255, 255}),
-					render.Vertex(right, bottom-7, 1, 1, color.RGBA{160, 210, 255, 255}), front[2],
+					front[1], render.Vertex(right, top, 1, 0, color.RGBA{240, 150, 200, 255}),
+					render.Vertex(right, bottom-7, 1, 1, color.RGBA{85, 115, 230, 255}), front[2],
 				}
 				batch.Quad(topFace)
 				batch.Quad(side)
