@@ -18,6 +18,7 @@ type artwork struct {
 	ball, logo, largeAtlas, smallAtlas *ebiten.Image
 	largeFace, smallFace               scrolling.Face
 	largeText, smallText               string
+	largeCells, smallCells             *font.CellBank
 }
 
 func loadArtwork() (*artwork, error) {
@@ -66,6 +67,19 @@ func loadArtwork() (*artwork, error) {
 		return nil, err
 	}
 	a.largeFace = scrolling.Face{Atlas: a.largeAtlas, Metrics: face, ScaleX: 18, ScaleY: 16}
+	var largeCharacters []rune
+	for r := 0; r < 256; r++ {
+		largeCharacters = append(largeCharacters, rune(r))
+	}
+	a.largeCells, err = font.NewCellBank(font.CellBankConfig{
+		Width: source.LargeGlyphWidth, Height: source.LargeGlyphHeight, Characters: string(largeCharacters),
+		Key:   func(r rune) int { return large.Index(byte(r)) },
+		Pixel: func(r rune, x, y int) bool { return large.Pixel(byte(r), x, y) },
+	})
+	if err != nil {
+		a.close()
+		return nil, err
+	}
 	small, err := readSmallFont()
 	if err != nil {
 		a.close()
@@ -92,6 +106,14 @@ func loadArtwork() (*artwork, error) {
 		return nil, err
 	}
 	a.smallFace = scrolling.Face{Atlas: a.smallAtlas, Metrics: smallMetrics, ScaleX: source.SmallColumnPitch, ScaleY: source.SmallRowPitch}
+	a.smallCells, err = font.NewCellBank(font.CellBankConfig{
+		Width: source.SmallGlyphWidth, Height: source.SmallGlyphHeight, Characters: string(order),
+		Pixel: func(r rune, x, y int) bool { return small.Pixel(byte(r), x, y) },
+	})
+	if err != nil {
+		a.close()
+		return nil, err
+	}
 	if data, readErr := assets.Files.ReadFile("original/large-message.txt"); readErr == nil {
 		a.largeText = string(data)
 	} else {

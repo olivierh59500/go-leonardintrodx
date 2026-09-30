@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	kit "github.com/olivierh59500/democonstructionkit"
 	"github.com/olivierh59500/democonstructionkit/effects"
+	"github.com/olivierh59500/democonstructionkit/font"
 	"github.com/olivierh59500/democonstructionkit/geometry"
 	"github.com/olivierh59500/democonstructionkit/render"
 	"github.com/olivierh59500/democonstructionkit/scrolling"
@@ -108,10 +109,10 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
 		return nil, err
 	}
-	if g.small, err = newSmallScrolling(g.art.smallFace, g.art.smallText, g.white, func() bool { return g.wireframe }); err != nil {
+	if g.small, err = newSmallScrolling(g.art.smallFace, g.art.smallCells, g.art.smallText, g.white, func() bool { return g.wireframe }); err != nil {
 		return nil, err
 	}
-	if g.large, err = newLargeTextWarp(g.art.largeFace, g.art.largeText, g.white, func() bool { return g.wireframe }); err != nil {
+	if g.large, err = newLargeTextWarp(g.art.largeFace, g.art.largeCells, g.art.largeText, g.white, func() bool { return g.wireframe }); err != nil {
 		return nil, err
 	}
 	if err = g.prepare(g.Seconds()); err != nil {
@@ -164,12 +165,9 @@ func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
 	return warp, nil
 }
 
-func newLargeTextWarp(face scrolling.Face, text string, white *ebiten.Image, wireframe func() bool) (*effects.Warp, error) {
+func newLargeTextWarp(face scrolling.Face, bank *font.CellBank, text string, white *ebiten.Image, wireframe func() bool) (*effects.Warp, error) {
 	const width, height, columns, rows = 720, 480, 40, 30
-	painter, err := newLargePainter(white, wireframe)
-	if err != nil {
-		return nil, err
-	}
+	cells := largeCells(bank, white, wireframe)
 	scroll, err := scrolling.New(scrolling.Config{
 		Text: text, Fonts: map[string]scrolling.Face{"original": face}, Font: "original",
 		Speed: 510, X: 720, Y: 0, Repeat: true, Gap: 0,
@@ -183,7 +181,7 @@ func newLargeTextWarp(face scrolling.Face, text string, white *ebiten.Image, wir
 			const margin = 64.0
 			return x1 > -margin && x0 < float64(width)+margin && y1 > -margin && y0 < float64(height)+margin
 		},
-		Shape: "authored", Modes: map[string]scrolling.Mode{"authored": {Paint: painter}},
+		Shape: "authored", Modes: map[string]scrolling.Mode{"authored": {Cells: &cells}},
 	})
 	if err != nil {
 		return nil, err

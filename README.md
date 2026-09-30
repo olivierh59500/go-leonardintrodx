@@ -1,12 +1,23 @@
 # OldSkool DirectX 8 Go
 
 A native Go/Ebitengine conversion of Leonard/Oxygene’s *Old skool Demo second
-edition*, using Demo Construction Kit v1.0.0. The original Oxygene logo,
+edition*, using Demo Construction Kit v1.0.3. The original Oxygene logo,
 ball artwork, two bitmap fonts, two scrolling messages and YM5 music are
 embedded in this version. DCK supplies the cube, batched sprite rendering,
 font-aware scrolling, image warps, bounded rendering and audio playback.
 The smaller scrolling text uses the original rainbow cubelets and moves across
 the full screen without an intermediate clipping surface.
+
+Both scrollings use DCK's owned `Mode.Cells`. Their native bitmaps are prepared
+once in immutable `font.CellBank` caches. The intro supplies its original row
+oscillators, cell dimensions, camera and colors; DCK owns flat rectangles,
+cuboid faces, depth/culling and filled/wireframe rendering. All 750 sampled
+complete frames match the preceding renderer across two 9,001-frame traversals.
+One muted native replay per implementation/mode measured mean CPU draw
+submissions of 737.34 to 715.49 microseconds filled and 1,118.58 to 1,029.59
+wireframe; those timings exclude GPU completion and readback.
+`go run ./cmd/checkframes -output captures/frames.json -timing` records complete
+frame fingerprints; add `-wireframe` for the outlined composition.
 
 ```sh
 GOWORK=off go run .
@@ -43,3 +54,9 @@ The original 640 × 480 canvas stays centered on a landscape display. Wide
 sidebars contain **WIRE**, **PAUSE** and **RESET** touch buttons. Pause freezes
 the picture while the YM music continues; Reset restarts both. The app keeps
 the screen awake while it is in the foreground.
+
+The 30 September 2026 ARM64 package embeds DCK v1.0.3 after the shared font-cell
+migration. Its native ELF load segments and APK library placement pass 16 KiB
+alignment. Desktop verification reproduces 750 complete filled/wireframe
+captures on the published module. No USB Android device was available for a
+new runtime check of this build.
