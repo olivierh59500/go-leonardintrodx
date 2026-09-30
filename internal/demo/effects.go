@@ -10,7 +10,6 @@ import (
 	"github.com/olivierh59500/democonstructionkit/effects"
 	"github.com/olivierh59500/democonstructionkit/geometry"
 	"github.com/olivierh59500/democonstructionkit/motion"
-	"github.com/olivierh59500/democonstructionkit/render"
 	"github.com/olivierh59500/democonstructionkit/sprites"
 	"github.com/olivierh59500/go-leonardintrodx/internal/source"
 )
@@ -96,25 +95,11 @@ func cubeTransform(t float64) effects.Transform {
 }
 
 func (g *Game) drawMeters(dst *ebiten.Image) {
-	g.batch.Begin(dst, g.white)
-	for column := 0; column < 80; column++ {
-		height := g.meter.Level(column)
-		if height <= 0 {
-			continue
-		}
-		x, top := float64(column*8), 479-height
-		if g.wireframe {
-			strokeCell(g.batch, x, top, 7, height)
-			continue
-		}
-		yellow := color.RGBA{255, 255, 0, 255}
-		red := color.RGBA{255, 0, 0, 255}
-		g.batch.Quad([4]ebiten.Vertex{
-			render.Vertex(x, top, 0, 0, yellow), render.Vertex(x+7, top, 1, 0, yellow),
-			render.Vertex(x+7, 479, 1, 1, red), render.Vertex(x, 479, 0, 1, red),
-		})
+	if g.wireframe {
+		g.meterBars.DrawOutline(dst)
+	} else {
+		g.meterBars.Draw(dst)
 	}
-	g.batch.Flush()
 }
 
 func (g *Game) drawLoad(dst *ebiten.Image) {

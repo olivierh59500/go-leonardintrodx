@@ -1,7 +1,7 @@
 # OldSkool DirectX 8 Go
 
 A native Go/Ebitengine conversion of Leonard/Oxygene’s *Old skool Demo second
-edition*, using Demo Construction Kit v1.0.7. The original Oxygene logo,
+edition*, using Demo Construction Kit v1.0.11. The original Oxygene logo,
 ball artwork, two bitmap fonts, two scrolling messages and YM5 music are
 embedded in this version. DCK supplies the cube, batched sprite rendering,
 font-aware scrolling, image warps, bounded rendering and audio playback.
@@ -34,6 +34,14 @@ logo/sprite borders. All 750 complete filled/wireframe samples remain identical.
 The outline width, colors, native quad boundaries and layout remain parameters.
 Optional `-cpuprofile /path/to/profile.pprof` on `cmd/checkframes` records a Go
 CPU profile of the traversal; profiler timings include their own sampling cost.
+
+Frequency columns now use DCK's `sound.YMPeriodMeter`, `modulation.PeakBank`
+and `composite.GradientBars`. The intro supplies its original volume table,
+period-to-column scale, mixer/envelope rules, decay, gradient and outline colors.
+DCK owns register mapping, retained peaks and both bar materials. The cached
+`motion.HarmonicRowProfile` also supplies editable row recipes for scrolling
+and logo deformation, preserving native floating-point grouping and precision.
+The complete filled/wireframe comparisons retain all 750 sampled frames.
 
 ```sh
 GOWORK=off go run .

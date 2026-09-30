@@ -15,6 +15,7 @@ import (
 	"github.com/olivierh59500/democonstructionkit/effects"
 	"github.com/olivierh59500/democonstructionkit/font"
 	"github.com/olivierh59500/democonstructionkit/geometry"
+	"github.com/olivierh59500/democonstructionkit/motion"
 	"github.com/olivierh59500/democonstructionkit/render"
 	"github.com/olivierh59500/democonstructionkit/scrolling"
 	"github.com/olivierh59500/democonstructionkit/sound"
@@ -42,6 +43,7 @@ type Game struct {
 	cube                                      *effects.MeshEffect
 	balls                                     *sprites.HarmonicField
 	bands                                     *composite.HarmonicBands
+	meterBars                                 *composite.GradientBars
 	logo, large                               *effects.Warp
 	small                                     *scrolling.Scrolling
 	white                                     *ebiten.Image
@@ -87,6 +89,13 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 	}
 	g.white = ebiten.NewImage(1, 1)
 	g.white.Fill(color.White)
+	if g.meterBars, err = composite.NewGradientBars(composite.GradientBarsConfig{
+		Columns: 80, Baseline: 479, Step: 8, Width: 7, Texture: g.white,
+		Level: func(column int) float64 { return g.meter.Level(column) },
+		Top:   color.NRGBA{R: 255, G: 255, A: 255}, Bottom: color.NRGBA{R: 255, A: 255},
+	}); err != nil {
+		return nil, err
+	}
 	cubeMesh := effects.Cube(source.CubeSide, geometry.Vec2{X: 1, Y: 1}, color.NRGBA{R: 255, G: 200, B: 255, A: 255})
 	nativeCubeColors := [6]color.NRGBA{
 		{R: 255, G: 240, B: 255, A: 255}, {R: 255, G: 224, B: 255, A: 255},
@@ -162,7 +171,24 @@ var logoWaves = [4]source.Oscillator{
 	{Amplitude: 94.25, Rate: .0443},
 }
 
+func logoRowProfile() (*motion.HarmonicRowProfile, error) {
+	global := 0
+	return motion.NewHarmonicRowProfile(motion.HarmonicRowProfileConfig{
+		Count: 11, ClockScale: [2]float64{85},
+		Stages: []motion.HarmonicRowStage{
+			{Motion: motion.HarmonicFormationConfig{X: []motion.IndexedHarmonic{logoWaves[0].Harmonic()}}},
+			{Motion: motion.HarmonicFormationConfig{X: []motion.IndexedHarmonic{logoWaves[1].Harmonic()}}},
+			{Motion: motion.HarmonicFormationConfig{Y: []motion.IndexedHarmonic{logoWaves[2].Harmonic()}}, Index: &global},
+			{Motion: motion.HarmonicFormationConfig{Y: []motion.IndexedHarmonic{logoWaves[3].Harmonic()}}, Index: &global},
+		},
+	})
+}
+
 func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
+	rows, err := logoRowProfile()
+	if err != nil {
+		return nil, err
+	}
 	layer := kit.Func{OnDraw: func(dst *ebiten.Image) {
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(233.0/180.0, 103.0/80.0)
@@ -174,17 +200,18 @@ func newLogoWarp(logo *ebiten.Image) (*effects.Warp, error) {
 	}
 	warp.Map = func(x, y, t float64) geometry.Vec2 {
 		strip := int(math.Round(y * 10 / 103))
-		return geometry.Vec2{
-			X: 203.5 + x + logoWaves[0].At(t, strip) + logoWaves[1].At(t, strip),
-			Y: 188.5 + y + logoWaves[2].At(t, 0) + logoWaves[3].At(t, 0),
-		}
+		pose, _ := rows.Apply(strip, t, motion.Point{X: 203.5 + x, Y: 188.5 + y})
+		return geometry.Vec2{X: pose.X, Y: pose.Y}
 	}
 	return warp, nil
 }
 
 func newLargeTextWarp(face scrolling.Face, bank *font.CellBank, text string, white *ebiten.Image, wireframe func() bool) (*effects.Warp, error) {
 	const width, height, columns, rows = 720, 480, 40, 30
-	cells := largeCells(bank, white, wireframe)
+	cells, err := largeCells(bank, white, wireframe)
+	if err != nil {
+		return nil, err
+	}
 	scroll, err := scrolling.New(scrolling.Config{
 		Text: text, Fonts: map[string]scrolling.Face{"original": face}, Font: "original",
 		Speed: 510, X: 720, Y: 0, Repeat: true, Gap: 0,
@@ -433,6 +460,9 @@ func (g *Game) Close() error {
 	}
 	if g.bands != nil {
 		err = errors.Join(err, g.bands.Close())
+	}
+	if g.meterBars != nil {
+		err = errors.Join(err, g.meterBars.Close())
 	}
 	if g.music != nil {
 		err = errors.Join(err, g.music.Close())

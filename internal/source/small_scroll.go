@@ -1,5 +1,7 @@
 package source
 
+import "github.com/olivierh59500/democonstructionkit/motion"
+
 const (
 	SmallCellSide    = 20
 	SmallColumnPitch = 28
@@ -20,16 +22,23 @@ var smallGlobalZ = [2]Oscillator{
 var smallRowY = Oscillator{Amplitude: 30, Rate: .103, Spacing: .222}
 var smallRowZ = Oscillator{Amplitude: 10, Rate: .1, Spacing: .17}
 
-// SmallScrollRows evaluates the source oscillators after the effect cue.
-func SmallScrollRows(seconds float64) [SmallGlyphHeight]SmallScrollRow {
-	globalY := smallGlobalY[0].At(seconds, 0) + smallGlobalY[1].At(seconds, 0)
-	globalZ := smallGlobalZ[0].At(seconds, 0) + smallGlobalZ[1].At(seconds, 0)
-	var rows [SmallGlyphHeight]SmallScrollRow
-	for row := range rows {
-		rows[row] = SmallScrollRow{
-			Y: 120 + globalY - float64(row*SmallRowPitch) - smallRowY.At(seconds, row),
-			Z: 140 + globalZ + smallRowZ.At(seconds, row),
-		}
-	}
-	return rows
+// NewSmallScrollProfile keeps the source's grouped global waves, row spacing
+// and local waves as an editable recipe. Its two outputs are world Y and Z.
+func NewSmallScrollProfile() (*motion.HarmonicRowProfile, error) {
+	global := 0
+	rowY := smallRowY
+	rowY.Amplitude = -rowY.Amplitude
+	return motion.NewHarmonicRowProfile(motion.HarmonicRowProfileConfig{
+		Count: SmallGlyphHeight, ClockScale: [2]float64{85},
+		Stages: []motion.HarmonicRowStage{
+			{Motion: motion.HarmonicFormationConfig{
+				X: []motion.IndexedHarmonic{smallGlobalY[0].Harmonic(), smallGlobalY[1].Harmonic()},
+				Y: []motion.IndexedHarmonic{smallGlobalZ[0].Harmonic(), smallGlobalZ[1].Harmonic()},
+			}, Index: &global},
+			{Motion: motion.HarmonicFormationConfig{Spacing: motion.Point{X: -SmallRowPitch}}},
+			{Motion: motion.HarmonicFormationConfig{
+				X: []motion.IndexedHarmonic{rowY.Harmonic()}, Y: []motion.IndexedHarmonic{smallRowZ.Harmonic()},
+			}},
+		},
+	})
 }

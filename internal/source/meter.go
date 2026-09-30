@@ -1,6 +1,6 @@
 package source
 
-import "math"
+import "github.com/olivierh59500/democonstructionkit/sound"
 
 // YMVolumeTable is the sixteen-word level table in the original executable.
 var YMVolumeTable = [16]uint16{
@@ -8,46 +8,33 @@ var YMVolumeTable = [16]uint16{
 	2260, 3088, 4570, 6233, 9330, 13187, 21220, 32767,
 }
 
-// Meter retains eighty 8-pixel columns. Three YM tone periods select columns;
-// their original volume levels charge them before a three-pixel decay.
-type Meter struct{ levels [80]float64 }
+// Meter configures the production's frequency columns and level curve. DCK
+// retains peaks, applies YM gating and charges them before the per-tick decay.
+// The zero value initializes its controller on the first Step.
+type Meter struct{ controller *sound.YMPeriodMeter }
 
 func (m *Meter) Step(registers [14]uint8) {
-	envelope := (int(registers[12])*256 + int(registers[11]&0xc0)) >> 6
-	for channel := 0; channel < 3; channel++ {
-		volume := registers[8+channel] & 0x1f
-		period := int(registers[channel*2]) + int(registers[channel*2+1]&0x0f)*256
-		strength := int(volume & 0x0f)
-		if volume&0x10 != 0 {
-			strength = 15
-		} else if registers[7]&(1<<channel) != 0 {
-			strength = 0
+	if m.controller == nil {
+		config := sound.YMPeriodMeterConfig{
+			Columns: 80, Gain: .003, Decay: 3, PeriodMin: 1, PeriodMaxExclusive: 4095,
+			FrequencyScale: 10000, Rounding: sound.YMPeriodRoundNearest, Gating: sound.YMPeriodGateFixed,
+			Envelope: true, EnvelopeShift: 6, EnvelopeLevel: 15, EnvelopeGain: 1,
 		}
-		m.charge(period, strength)
-		if volume&0x10 != 0 {
-			m.charge(envelope, 15)
+		for index, level := range YMVolumeTable {
+			config.Levels[index] = float64(level)
+		}
+		var err error
+		m.controller, err = sound.NewYMPeriodMeter(config)
+		if err != nil {
+			panic(err)
 		}
 	}
-	for index := range m.levels {
-		m.levels[index] = max(0, m.levels[index]-3)
-	}
-}
-
-func (m *Meter) charge(period, strength int) {
-	if period <= 0 || period >= 4095 || strength < 0 || strength > 15 {
-		return
-	}
-	column := int(math.Round(10000 / float64(period)))
-	if column < 0 || column >= len(m.levels) {
-		return
-	}
-	height := float64(YMVolumeTable[strength]) * .003
-	m.levels[column] = max(m.levels[column], height)
+	_ = m.controller.Step(registers)
 }
 
 func (m *Meter) Level(column int) float64 {
-	if column < 0 || column >= len(m.levels) {
+	if m == nil {
 		return 0
 	}
-	return m.levels[column]
+	return m.controller.Level(column)
 }

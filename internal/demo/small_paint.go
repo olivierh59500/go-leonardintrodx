@@ -4,6 +4,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/olivierh59500/democonstructionkit/font"
 	"github.com/olivierh59500/democonstructionkit/geometry"
+	"github.com/olivierh59500/democonstructionkit/motion"
 	"github.com/olivierh59500/democonstructionkit/scrolling"
 	"github.com/olivierh59500/go-leonardintrodx/internal/source"
 	"image"
@@ -17,8 +18,10 @@ var smallCellColors = []color.NRGBA{
 }
 
 func newSmallScrolling(face scrolling.Face, bank *font.CellBank, text string, white *ebiten.Image, wireframe func() bool) (*scrolling.Scrolling, error) {
-	var rows [source.SmallGlyphHeight]source.SmallScrollRow
-	lastTime := math.NaN()
+	rows, err := source.NewSmallScrollProfile()
+	if err != nil {
+		return nil, err
+	}
 	cells := scrolling.CellPainterConfig{
 		Fonts: map[string]*font.CellBank{"original": bank}, Shape: scrolling.CellCuboid,
 		White: white, LineWidth: 1.2, CullBounds: image.Rect(0, 0, Width, Height),
@@ -30,11 +33,8 @@ func newSmallScrolling(face scrolling.Face, bank *font.CellBank, text string, wh
 			Camera: geometry.Camera{Center: geometry.Vec2{X: Width / 2, Y: Height / 2}, Focal: Height * math.Sqrt(3) / 2, Near: .1},
 		},
 		Rows: func(_ string, row int, seconds float64) geometry.Vec3 {
-			if lastTime != seconds {
-				rows = source.SmallScrollRows(seconds)
-				lastTime = seconds
-			}
-			return geometry.Vec3{Y: rows[row].Y, Z: rows[row].Z}
+			pose, _ := rows.Apply(row, seconds, motion.Point{X: 120, Y: 140})
+			return geometry.Vec3{Y: pose.X, Z: pose.Y}
 		},
 	}
 	return scrolling.New(scrolling.Config{
