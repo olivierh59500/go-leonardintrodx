@@ -106,6 +106,10 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 		return nil, err
 	}
 	g.cube.CullBackFaces = true
+	if err = g.cube.SetOutline(effects.MeshOutlineConfig{Faces: effects.CubeFaces(), Width: 1.2,
+		Color: color.NRGBA{R: 255, G: 198, B: 255, A: 255}, White: g.white}); err != nil {
+		return nil, err
+	}
 	if g.bands, err = newNativeBands(g.white); err != nil {
 		return nil, err
 	}
@@ -116,6 +120,10 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 		return nil, err
 	}
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
+		return nil, err
+	}
+	if err = g.logo.SetOutline(effects.WarpOutlineConfig{Width: 1.2,
+		Color: color.NRGBA{R: 235, G: 135, B: 245, A: 255}, White: g.white}); err != nil {
 		return nil, err
 	}
 	if g.small, err = newSmallScrolling(g.art.smallFace, g.art.smallCells, g.art.smallText, g.white, func() bool { return g.wireframe }); err != nil {
@@ -385,11 +393,7 @@ func (g *Game) Draw(dst *ebiten.Image) {
 	if t >= LargeTextStart {
 		g.large.Draw(dst)
 	}
-	if g.wireframe {
-		g.drawCubeWire(dst)
-	} else {
-		g.cube.Draw(dst)
-	}
+	g.cube.Draw(dst)
 	if t >= SmallTextStart {
 		g.small.Draw(dst)
 	}

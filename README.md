@@ -1,7 +1,7 @@
 # OldSkool DirectX 8 Go
 
 A native Go/Ebitengine conversion of Leonard/Oxygene’s *Old skool Demo second
-edition*, using Demo Construction Kit v1.0.6. The original Oxygene logo,
+edition*, using Demo Construction Kit v1.0.7. The original Oxygene logo,
 ball artwork, two bitmap fonts, two scrolling messages and YM5 music are
 embedded in this version. DCK supplies the cube, batched sprite rendering,
 font-aware scrolling, image warps, bounded rendering and audio playback.
@@ -26,6 +26,14 @@ rounding and clamps; DCK samples and caches the poses once per update. All 750
 complete-frame samples still match, and every applicable band/sprite position
 matches the original oscillator routines through tick 9,000. No working image
 is added. Absolute clocks preserve those poses when opening at a later time.
+
+Cube, logo-grid and sprite-box outlines also use DCK materials. They reuse the
+mesh's transformed points, the warp's current map/time and the sprite field's
+cached samples; the intro no longer projects its own cube edges or loops over
+logo/sprite borders. All 750 complete filled/wireframe samples remain identical.
+The outline width, colors, native quad boundaries and layout remain parameters.
+Optional `-cpuprofile /path/to/profile.pprof` on `cmd/checkframes` records a Go
+CPU profile of the traversal; profiler timings include their own sampling cost.
 
 ```sh
 GOWORK=off go run .
@@ -63,8 +71,8 @@ sidebars contain **WIRE**, **PAUSE** and **RESET** touch buttons. Pause freezes
 the picture while the YM music continues; Reset restarts both. The app keeps
 the screen awake while it is in the foreground.
 
-The 30 September 2026 ARM64 package embeds DCK v1.0.6 after the shared font-cell
-and harmonic migrations. Its native ELF load segments and APK library placement
+The 30 September 2026 ARM64 package embeds DCK v1.0.7 after the shared font-cell,
+harmonic and outline migrations. Its native ELF load segments and APK placement
 pass 16 KiB alignment. Desktop verification reproduces 750 complete filled and
 wireframe captures on the published module.
 

@@ -11,6 +11,7 @@ import (
 	"github.com/olivierh59500/democonstructionkit/geometry"
 	"github.com/olivierh59500/democonstructionkit/motion"
 	"github.com/olivierh59500/democonstructionkit/render"
+	"github.com/olivierh59500/democonstructionkit/sprites"
 	"github.com/olivierh59500/go-leonardintrodx/internal/source"
 )
 
@@ -55,57 +56,24 @@ func newNativeBands(white *ebiten.Image) (*composite.HarmonicBands, error) {
 	})
 }
 
-func (g *Game) drawCubeWire(dst *ebiten.Image) {
-	pose := g.cube.Transform
-	rotation := geometry.RotateXYZ(pose.Rotation)
-	var points [8]geometry.Vec3
-	for i, point := range g.cube.Mesh.Points {
-		points[i] = rotation.Apply(point.Scale(pose.Scale)).Add(pose.Position)
-	}
-	g.batch.Begin(dst, g.white)
-	for _, face := range [6][4]int{
-		{0, 3, 2, 1}, {4, 5, 6, 7}, {0, 4, 7, 3},
-		{1, 2, 6, 5}, {0, 1, 5, 4}, {3, 7, 6, 2},
-	} {
-		a, b, c := points[face[0]], points[face[1]], points[face[2]]
-		if b.Sub(a).Cross(c.Sub(a)).Dot(a) >= 0 {
-			continue
-		}
-		var quad [4]geometry.Vec2
-		for corner, index := range face {
-			quad[corner], _, _ = g.cube.Camera.Project(points[index])
-		}
-		g.strokeQuad(quad, color.RGBA{255, 198, 255, 255})
-	}
-	g.batch.Flush()
-}
+var outlinedBalls = sprites.FieldOutline{Width: 1}
 
 func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
 	if t >= BallsStart {
 		g.bands.DrawOutline(dst, 1.2)
 	}
-	g.batch.Begin(dst, g.white)
 	if t >= BallFieldStart {
-		for _, sprite := range g.balls.Samples() {
-			strokeCell(g.batch, sprite.X-16, sprite.Y-16, 32, 32)
-		}
+		style := g.balls.Style
+		style.Outline = &outlinedBalls
+		g.balls.DrawStyle(dst, style)
 	}
 	if t >= LogoStart {
-		local := t - LogoStart
-		paint := color.RGBA{235, 135, 245, 255}
-		for row := 0; row < 10; row++ {
-			top, bottom := float64(row)*10.3, float64(row+1)*10.3
-			g.strokeQuad([4]geometry.Vec2{
-				g.logo.Map(0, top, local), g.logo.Map(233, top, local),
-				g.logo.Map(233, bottom, local), g.logo.Map(0, bottom, local),
-			}, paint)
-		}
+		g.logo.DrawOutline(dst)
 	}
-	g.batch.Flush()
 	if t >= LargeTextStart {
 		g.large.Draw(dst)
 	}
-	g.drawCubeWire(dst)
+	g.cube.DrawOutline(dst)
 	if t >= SmallTextStart {
 		g.small.Draw(dst)
 	}
@@ -113,10 +81,6 @@ func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
 	if g.showLoad {
 		g.drawLoad(dst)
 	}
-}
-
-func (g *Game) strokeQuad(quad [4]geometry.Vec2, paint color.Color) {
-	g.batch.StrokePath(quad[:], render.PathStroke{Width: 1.2}, paint)
 }
 
 // The source rotates a 60-unit cube around X and Y and translates it through
