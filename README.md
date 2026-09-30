@@ -92,3 +92,8 @@ The DCK 1.0.6 package was installed and exercised on the Pixel 10a on
 recorded 49.2–50.9 logical updates/s and 59.7–60.2 displayed frames/s, with no
 observed crash. This filled-mode runtime check is separate from the desktop
 filled/wireframe image comparisons; it does not measure native/GPU memory.
+
+The subsequent DCK 1.0.7 package was also installed and run on the Pixel.
+After the final effect entrance, 35 ten-second samples recorded 49.2–50.9
+updates/s and 59.8–60.1 displayed frames/s without an observed crash. The
+published-module desktop replay still matches all 750 filled/wireframe samples.
