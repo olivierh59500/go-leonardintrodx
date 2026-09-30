@@ -78,3 +78,9 @@ adb logcat -s GoLog:I AndroidRuntime:E
 
 The host logs simulation/display cadence every ten seconds. The flag changes
 only lock-screen visibility; clocks, effects, controls and music remain normal.
+
+The DCK 1.0.6 package was installed and exercised on the Pixel 10a on
+30 September 2026. After every effect had entered, 37 ten-second samples
+recorded 49.2–50.9 logical updates/s and 59.7–60.2 displayed frames/s, with no
+observed crash. This filled-mode runtime check is separate from the desktop
+filled/wireframe image comparisons; it does not measure native/GPU memory.
