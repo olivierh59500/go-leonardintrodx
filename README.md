@@ -1,7 +1,7 @@
 # OldSkool DirectX 8 Go
 
 A native Go/Ebitengine conversion of Leonard/Oxygene’s *Old skool Demo second
-edition*, using Demo Construction Kit v1.0.11. The original Oxygene logo,
+edition*, using Demo Construction Kit v1.0.13. The original Oxygene logo,
 ball artwork, two bitmap fonts, two scrolling messages and YM5 music are
 embedded in this version. DCK supplies the cube, batched sprite rendering,
 font-aware scrolling, image warps, bounded rendering and audio playback.
