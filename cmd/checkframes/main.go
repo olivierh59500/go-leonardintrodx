@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -115,9 +116,21 @@ func main() {
 	limit := flag.Int("last-tick", 9000, "last 50 Hz update tick to render")
 	outline := flag.Bool("wireframe", false, "capture the original outlined geometry mode")
 	measure := flag.Bool("timing", false, "measure muted CPU update/draw submission, excluding readback and GPU completion")
+	profile := flag.String("cpuprofile", "", "write an optional Go CPU profile of the complete traversal")
 	flag.Parse()
 	if *output == "" || *limit < 0 || *limit > 60000 {
 		log.Fatal("-output and a last tick within 0..60000 are required")
+	}
+	if *profile != "" {
+		file, err := os.Create(*profile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		if err := pprof.StartCPUProfile(file); err != nil {
+			log.Fatal(err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 	p := &probe{limit: *limit, measure: *measure, report: report{Wireframe: *outline,
 		Width: demo.Width, Height: demo.Height, Rate: demo.FPS}}
