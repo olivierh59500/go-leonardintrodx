@@ -1,7 +1,7 @@
 # OldSkool DirectX 8 Go
 
 A native Go/Ebitengine conversion of Leonard/Oxygene’s *Old skool Demo second
-edition*, using Demo Construction Kit v1.0.3. The original Oxygene logo,
+edition*, using Demo Construction Kit v1.0.6. The original Oxygene logo,
 ball artwork, two bitmap fonts, two scrolling messages and YM5 music are
 embedded in this version. DCK supplies the cube, batched sprite rendering,
 font-aware scrolling, image warps, bounded rendering and audio playback.
@@ -18,6 +18,14 @@ submissions of 737.34 to 715.49 microseconds filled and 1,118.58 to 1,029.59
 wireframe; those timings exclude GPU completion and readback.
 `go run ./cmd/checkframes -output captures/frames.json -timing` records complete
 frame fingerprints; add `-wireframe` for the outlined composition.
+
+The sixteen colored strips use DCK's `composite.HarmonicBands`, including their
+filled and outlined materials. The eighty ball sprites use `sprites.HarmonicField`.
+The intro supplies its four oscillator values, 85-unit clock, colors, integer
+rounding and clamps; DCK samples and caches the poses once per update. All 750
+complete-frame samples still match, and every applicable band/sprite position
+matches the original oscillator routines through tick 9,000. No working image
+is added. Absolute clocks preserve those poses when opening at a later time.
 
 ```sh
 GOWORK=off go run .
@@ -55,8 +63,18 @@ sidebars contain **WIRE**, **PAUSE** and **RESET** touch buttons. Pause freezes
 the picture while the YM music continues; Reset restarts both. The app keeps
 the screen awake while it is in the foreground.
 
-The 30 September 2026 ARM64 package embeds DCK v1.0.3 after the shared font-cell
-migration. Its native ELF load segments and APK library placement pass 16 KiB
-alignment. Desktop verification reproduces 750 complete filled/wireframe
-captures on the published module. No USB Android device was available for a
-new runtime check of this build.
+The 30 September 2026 ARM64 package embeds DCK v1.0.6 after the shared font-cell
+and harmonic migrations. Its native ELF load segments and APK library placement
+pass 16 KiB alignment. Desktop verification reproduces 750 complete filled and
+wireframe captures on the published module.
+
+An explicit verification launch can render over a locked screen without
+dismissing the keyguard or changing the device's security settings:
+
+```sh
+adb shell am start -S -W -n com.olivierh.leonardintrodx/.MainActivity --ez oldskool_verify true
+adb logcat -s GoLog:I AndroidRuntime:E
+```
+
+The host logs simulation/display cadence every ten seconds. The flag changes
+only lock-screen visibility; clocks, effects, controls and music remain normal.

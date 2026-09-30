@@ -6,15 +6,16 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/olivierh59500/democonstructionkit/composite"
 	"github.com/olivierh59500/democonstructionkit/effects"
 	"github.com/olivierh59500/democonstructionkit/geometry"
+	"github.com/olivierh59500/democonstructionkit/motion"
 	"github.com/olivierh59500/democonstructionkit/render"
-	"github.com/olivierh59500/democonstructionkit/sprites"
 	"github.com/olivierh59500/go-leonardintrodx/internal/source"
 )
 
 // The 16 ribbons use the source's four oscillators and pastel vertex palette.
-var ribbonColors = [...]color.RGBA{
+var ribbonColors = [...]color.NRGBA{
 	{255, 255, 255, 255}, {255, 255, 208, 255}, {255, 255, 176, 255}, {255, 255, 144, 255},
 	{255, 224, 128, 255}, {255, 192, 128, 255}, {255, 160, 128, 255}, {255, 128, 128, 255},
 	{255, 128, 128, 255}, {208, 128, 160, 255}, {176, 128, 192, 255}, {144, 128, 224, 255},
@@ -35,30 +36,23 @@ var ballWaves = [4]source.Oscillator{
 	{Amplitude: 111, Rate: .0203, Spacing: .2230},
 }
 
-// The original program evaluates four sine banks for each of eighty 32-pixel
-// textured sprites. DCK's shared painter receives the resulting positions.
-func (g *Game) updateBallSamples(t float64) {
-	for i := range g.ballSamples {
-		x := 320 + ballWaves[0].At(t, i) + ballWaves[1].At(t, i)
-		y := 240 + ballWaves[2].At(t, i) + ballWaves[3].At(t, i)
-		g.ballSamples[i] = sprites.FieldSample{Index: i, X: math.Round(x), Y: math.Round(y), Scale: 1}
+// nativeFormation preserves the executable's oscillator constants and signed
+// phase reduction. The DCK controllers own sampling and cached poses.
+func nativeFormation(waves [4]source.Oscillator, x, y float64) motion.HarmonicFormationConfig {
+	term := func(o source.Oscillator) motion.IndexedHarmonic {
+		return motion.IndexedHarmonic{Amplitude: o.Amplitude, Rate: o.Rate, IndexRate: o.Spacing, PhasePeriod: 2 * math.Pi}
 	}
+	return motion.HarmonicFormationConfig{Origin: motion.Point{X: x, Y: y},
+		X: []motion.IndexedHarmonic{term(waves[0]), term(waves[1])},
+		Y: []motion.IndexedHarmonic{term(waves[2]), term(waves[3])}}
 }
 
-func (g *Game) drawBands(dst *ebiten.Image, t float64) {
-	g.batch.Begin(dst, g.white)
-	phase := t - BallsStart
-	for i, paint := range ribbonColors {
-		left := math.Round(232 + ribbonWaves[0].At(phase, i) + ribbonWaves[1].At(phase, i))
-		right := math.Round(232 + ribbonWaves[2].At(phase, i) + ribbonWaves[3].At(phase, i))
-		left, right = max(0, min(463, left)), max(0, min(463, right))
-		quad := [4]ebiten.Vertex{
-			render.Vertex(0, left, 0, 0, paint), render.Vertex(640, right, 1, 0, paint),
-			render.Vertex(640, right+8, 1, 1, paint), render.Vertex(0, left+8, 0, 1, paint),
-		}
-		g.batch.Quad(quad)
-	}
-	g.batch.Flush()
+func newNativeBands(white *ebiten.Image) (*composite.HarmonicBands, error) {
+	return composite.NewHarmonicBands(composite.HarmonicBandsConfig{
+		LeftX: 0, RightX: 640, Thickness: 8, Colors: ribbonColors[:], White: white,
+		Motion: nativeFormation(ribbonWaves, 232, 232), ClockScale: [2]float64{85, 0}, PixelSnap: true,
+		Bounds: &motion.FormationBounds{Min: motion.Point{}, Max: motion.Point{X: 463, Y: 463}},
+	})
 }
 
 func (g *Game) drawCubeWire(dst *ebiten.Image) {
@@ -87,20 +81,12 @@ func (g *Game) drawCubeWire(dst *ebiten.Image) {
 }
 
 func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
-	g.batch.Begin(dst, g.white)
 	if t >= BallsStart {
-		phase := t - BallsStart
-		for i, paint := range ribbonColors {
-			left := max(0, min(463, math.Round(232+ribbonWaves[0].At(phase, i)+ribbonWaves[1].At(phase, i))))
-			right := max(0, min(463, math.Round(232+ribbonWaves[2].At(phase, i)+ribbonWaves[3].At(phase, i))))
-			g.strokeQuad([4]geometry.Vec2{
-				{X: 0, Y: left}, {X: 640, Y: right},
-				{X: 640, Y: right + 8}, {X: 0, Y: left + 8},
-			}, paint)
-		}
+		g.bands.DrawOutline(dst, 1.2)
 	}
+	g.batch.Begin(dst, g.white)
 	if t >= BallFieldStart {
-		for _, sprite := range g.ballSamples {
+		for _, sprite := range g.balls.Samples() {
 			strokeCell(g.batch, sprite.X-16, sprite.Y-16, 32, 32)
 		}
 	}
@@ -130,23 +116,7 @@ func (g *Game) drawWireframe(dst *ebiten.Image, t float64) {
 }
 
 func (g *Game) strokeQuad(quad [4]geometry.Vec2, paint color.Color) {
-	for edge := 0; edge < 4; edge++ {
-		a, b := quad[edge], quad[(edge+1)%4]
-		g.strokeLine(a.X, a.Y, b.X, b.Y, 1.2, paint)
-	}
-}
-
-func (g *Game) strokeLine(x0, y0, x1, y1, width float64, paint color.Color) {
-	dx, dy := x1-x0, y1-y0
-	length := math.Hypot(dx, dy)
-	if length == 0 {
-		return
-	}
-	nx, ny := -dy/length*width/2, dx/length*width/2
-	g.batch.Quad([4]ebiten.Vertex{
-		render.Vertex(x0+nx, y0+ny, 0, 0, paint), render.Vertex(x1+nx, y1+ny, 1, 0, paint),
-		render.Vertex(x1-nx, y1-ny, 1, 1, paint), render.Vertex(x0-nx, y0-ny, 0, 1, paint),
-	})
+	g.batch.StrokePath(quad[:], render.PathStroke{Width: 1.2}, paint)
 }
 
 // The source rotates a 60-unit cube around X and Y and translates it through

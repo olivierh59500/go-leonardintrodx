@@ -21,6 +21,14 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         Seq.setContext(getApplicationContext());
 
+        // An explicit verification launch may render over a locked screen,
+        // while the keyguard and its security settings remain intact.
+        if (getIntent().getBooleanExtra("oldskool_verify", false)
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        }
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             WindowManager.LayoutParams attributes = getWindow().getAttributes();

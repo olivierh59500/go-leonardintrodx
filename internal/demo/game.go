@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	kit "github.com/olivierh59500/democonstructionkit"
+	"github.com/olivierh59500/democonstructionkit/composite"
 	"github.com/olivierh59500/democonstructionkit/effects"
 	"github.com/olivierh59500/democonstructionkit/font"
 	"github.com/olivierh59500/democonstructionkit/geometry"
@@ -39,8 +40,8 @@ const (
 type Game struct {
 	art                                       *artwork
 	cube                                      *effects.MeshEffect
-	ballRenderer                              *sprites.FieldRenderer
-	ballSamples                               [80]sprites.FieldSample
+	balls                                     *sprites.HarmonicField
+	bands                                     *composite.HarmonicBands
 	logo, large                               *effects.Warp
 	small                                     *scrolling.Scrolling
 	white                                     *ebiten.Image
@@ -105,7 +106,15 @@ func NewGame(start int, mute bool) (_ *Game, err error) {
 		return nil, err
 	}
 	g.cube.CullBackFaces = true
-	g.ballRenderer = sprites.NewFieldRenderer(80)
+	if g.bands, err = newNativeBands(g.white); err != nil {
+		return nil, err
+	}
+	if g.balls, err = sprites.NewHarmonicField(sprites.HarmonicFieldConfig{
+		Count: 80, Motion: nativeFormation(ballWaves, 320, 240), ClockScale: [2]float64{85, 0}, PixelSnap: true,
+		Style: sprites.FieldStyle{Image: g.art.ball, Appearance: sprites.FieldAppearance{Width: 32, Height: 32, AnchorX: .5, AnchorY: .5}},
+	}); err != nil {
+		return nil, err
+	}
 	if g.logo, err = newLogoWarp(g.art.logo); err != nil {
 		return nil, err
 	}
@@ -263,8 +272,15 @@ func (g *Game) prepare(t float64) error {
 	if err := g.cube.Update(kit.Frame{Time: t}); err != nil {
 		return err
 	}
+	if t >= BallsStart {
+		if err := g.bands.Update(kit.Frame{Time: t - BallsStart}); err != nil {
+			return err
+		}
+	}
 	if t >= BallFieldStart {
-		g.updateBallSamples(t - BallFieldStart)
+		if err := g.balls.Update(kit.Frame{Time: t - BallFieldStart}); err != nil {
+			return err
+		}
 	}
 	if t >= LogoStart {
 		if err := g.logo.Update(kit.Frame{Time: t - LogoStart}); err != nil {
@@ -358,12 +374,10 @@ func (g *Game) Draw(dst *ebiten.Image) {
 		return
 	}
 	if t >= BallsStart {
-		g.drawBands(dst, t)
+		g.bands.Draw(dst)
 	}
 	if t >= BallFieldStart {
-		g.ballRenderer.Draw(dst, g.ballSamples[:], sprites.FieldStyle{
-			Image: g.art.ball, Appearance: sprites.FieldAppearance{Width: 32, Height: 32, AnchorX: .5, AnchorY: .5},
-		})
+		g.balls.Draw(dst)
 	}
 	if t >= LogoStart {
 		g.logo.Draw(dst)
@@ -410,8 +424,11 @@ func (g *Game) Close() error {
 	if g.cube != nil {
 		err = errors.Join(err, g.cube.Close())
 	}
-	if g.ballRenderer != nil {
-		err = errors.Join(err, g.ballRenderer.Close())
+	if g.balls != nil {
+		err = errors.Join(err, g.balls.Close())
+	}
+	if g.bands != nil {
+		err = errors.Join(err, g.bands.Close())
 	}
 	if g.music != nil {
 		err = errors.Join(err, g.music.Close())
