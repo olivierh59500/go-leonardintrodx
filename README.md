@@ -8,6 +8,35 @@ font-aware scrolling, image warps, bounded rendering and audio playback.
 The smaller scrolling text uses the original rainbow cubelets and moves across
 the full screen without an intermediate clipping surface.
 
+<!-- Project showcase -->
+## Screenshots
+
+[![Rotating cube, rainbow bands and music frequency columns](docs/media/screenshot-1.png)](docs/media/screenshot-1.png)
+
+Rotating cube, rainbow bands and music frequency columns.
+
+[![Waving ball formations surround the cube and rainbow bands](docs/media/screenshot-2.png)](docs/media/screenshot-2.png)
+
+Waving ball formations surround the cube and rainbow bands.
+
+[![Large colored block lettering and smaller rainbow cubelet text](docs/media/screenshot-3.png)](docs/media/screenshot-3.png)
+
+Large colored block lettering and smaller rainbow cubelet text.
+
+## Video
+
+[![Animated preview of OldSkool DirectX 8 Go](docs/media/preview.gif)](https://github.com/olivierh59500/go-leonardintrodx/raw/refs/heads/main/docs/media/preview.mp4)
+
+**[Watch or download the 12-second MP4 preview with sound](https://github.com/olivierh59500/go-leonardintrodx/raw/refs/heads/main/docs/media/preview.mp4)**
+
+This short showcase combines selected passages from the Go production.
+
+The animated image is silent; the MP4 includes the soundtrack.
+
+<!-- End project showcase -->
+
+## Production notes
+
 Both scrollings use DCK's owned `Mode.Cells`. Their native bitmaps are prepared
 once in immutable `font.CellBank` caches. The intro supplies its original row
 oscillators, cell dimensions, camera and colors; DCK owns flat rectangles,
